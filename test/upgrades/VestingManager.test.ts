@@ -24,8 +24,8 @@ describe("VestingManager Upgrades", function () {
     [owner, upgrader, vestingAdmin, beneficiary, user] = await ethers.getSigners();
 
     // Deploy token
-    const XXXToken = await ethers.getContractFactory("XXXToken");
-    const token = await upgrades.deployProxy(XXXToken, [], { initializer: 'initialize' });
+    const TTNToken = await ethers.getContractFactory("TTNToken");
+    const token = await upgrades.deployProxy(TTNToken, [], { initializer: 'initialize' });
     await token.waitForDeployment();
 
     // Deploy vault
@@ -58,7 +58,7 @@ describe("VestingManager Upgrades", function () {
   describe("Upgrading", function () {
     it("Should allow upgrader to upgrade the contract", async function () {
       // Get V2 contract factory
-      const VestingManagerV2 = await ethers.getContractFactory("XXXVestingManagerV2");
+      const VestingManagerV2 = await ethers.getContractFactory("TTNVestingManagerV2");
       
       // Upgrade to V2
       const upgraded = await upgrades.upgradeProxy(await vestingManager.getAddress(), VestingManagerV2);
@@ -70,7 +70,7 @@ describe("VestingManager Upgrades", function () {
 
     it("Should not allow non-upgrader to upgrade the contract", async function () {
       // Get V2 contract factory
-      const VestingManagerV2 = await ethers.getContractFactory("XXXVestingManagerV2");
+      const VestingManagerV2 = await ethers.getContractFactory("TTNVestingManagerV2");
       
       await expect(
         upgrades.upgradeProxy(await vestingManager.getAddress(), VestingManagerV2.connect(user))
@@ -98,7 +98,7 @@ describe("VestingManager Upgrades", function () {
       const scheduleId = event?.topics[1] ? BigInt(event.topics[1]) : BigInt(0);
 
       // Get V2 contract factory
-      const VestingManagerV2 = await ethers.getContractFactory("XXXVestingManagerV2");
+      const VestingManagerV2 = await ethers.getContractFactory("TTNVestingManagerV2");
       
       // Upgrade to V2
       const upgraded = await upgrades.upgradeProxy(await vestingManager.getAddress(), VestingManagerV2);
@@ -113,7 +113,7 @@ describe("VestingManager Upgrades", function () {
 
     it("Should not allow initializing V2 twice", async function () {
       // Get V2 contract factory
-      const VestingManagerV2 = await ethers.getContractFactory("XXXVestingManagerV2");
+      const VestingManagerV2 = await ethers.getContractFactory("TTNVestingManagerV2");
       
       // Upgrade to V2
       const upgraded = await upgrades.upgradeProxy(await vestingManager.getAddress(), VestingManagerV2);
@@ -127,7 +127,7 @@ describe("VestingManager Upgrades", function () {
 
     it("Should maintain access control after upgrade", async function () {
       // Get V2 contract factory
-      const VestingManagerV2 = await ethers.getContractFactory("XXXVestingManagerV2");
+      const VestingManagerV2 = await ethers.getContractFactory("TTNVestingManagerV2");
       
       // Upgrade to V2
       const upgraded = await upgrades.upgradeProxy(await vestingManager.getAddress(), VestingManagerV2);

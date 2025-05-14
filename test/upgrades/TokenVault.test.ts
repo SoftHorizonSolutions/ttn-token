@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { TokenVault, XXXTokenVaultV2, XXXToken } from "../../typechain-types";
+import { TokenVault, TTNTokenVaultV2, TTNToken } from "../../typechain-types";
 
 describe("TokenVault Upgrades", function () {
   // Role identifiers
@@ -14,16 +14,16 @@ describe("TokenVault Upgrades", function () {
   let user: SignerWithAddress;
 
   // Contract instances
-  let token: XXXToken;
+  let token: TTNToken;
   let vault: TokenVault;
-  let vaultV2: XXXTokenVaultV2;
+  let vaultV2: TTNTokenVaultV2;
 
   async function deployFixture() {
     [owner, upgrader, user] = await ethers.getSigners();
 
     // Deploy token
-    const XXXToken = await ethers.getContractFactory("XXXToken");
-    const token = await upgrades.deployProxy(XXXToken, [], { initializer: 'initialize' });
+    const TTNToken = await ethers.getContractFactory("TTNToken");
+    const token = await upgrades.deployProxy(TTNToken, [], { initializer: 'initialize' });
     await token.waitForDeployment();
 
     // Deploy vault
@@ -46,7 +46,7 @@ describe("TokenVault Upgrades", function () {
   describe("Upgrading", function () {
     it("Should allow upgrader to upgrade the contract", async function () {
       // Get V2 contract factory
-      const TokenVaultV2 = await ethers.getContractFactory("XXXTokenVaultV2");
+      const TokenVaultV2 = await ethers.getContractFactory("TTNTokenVaultV2");
       
       // Upgrade to V2
       const upgraded = await upgrades.upgradeProxy(await vault.getAddress(), TokenVaultV2);
@@ -57,7 +57,7 @@ describe("TokenVault Upgrades", function () {
 
     it("Should not allow non-upgrader to upgrade the contract", async function () {
       // Get V2 contract factory
-      const TokenVaultV2 = await ethers.getContractFactory("XXXTokenVaultV2");
+      const TokenVaultV2 = await ethers.getContractFactory("TTNTokenVaultV2");
       
       await expect(
         upgrades.upgradeProxy(await vault.getAddress(), TokenVaultV2.connect(user))
@@ -71,13 +71,13 @@ describe("TokenVault Upgrades", function () {
       await vault.connect(owner).createAllocation(beneficiary, amount);
 
       // Get V2 contract factory
-      const TokenVaultV2 = await ethers.getContractFactory("XXXTokenVaultV2");
+      const TokenVaultV2 = await ethers.getContractFactory("TTNTokenVaultV2");
       
       // Upgrade to V2
       await upgrades.upgradeProxy(await vault.getAddress(), TokenVaultV2);
       
       // Get the upgraded contract
-      const upgradedVault = await ethers.getContractAt("XXXTokenVaultV2", await vault.getAddress());
+      const upgradedVault = await ethers.getContractAt("TTNTokenVaultV2", await vault.getAddress());
       
       // Verify state is preserved
       const allocations = await upgradedVault.getAllocationsForBeneficiary(beneficiary);
@@ -90,7 +90,7 @@ describe("TokenVault Upgrades", function () {
 
     it("Should not allow initializing V2 twice", async function () {
       // Get V2 contract factory
-      const TokenVaultV2 = await ethers.getContractFactory("XXXTokenVaultV2");
+      const TokenVaultV2 = await ethers.getContractFactory("TTNTokenVaultV2");
       
       // Upgrade to V2
       const upgraded = await upgrades.upgradeProxy(await vault.getAddress(), TokenVaultV2);

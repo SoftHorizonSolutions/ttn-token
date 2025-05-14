@@ -1,8 +1,8 @@
 /**
- * Deployment script for XXX Token System
+ * Deployment script for TTN Token System
  * 
- * This script deploys the XXX token system using the UUPS upgradeable pattern:
- * 1. XXXToken - Core ERC20 Token
+ * This script deploys the TTN token system using the UUPS upgradeable pattern:
+ * 1. TTNToken - Core ERC20 Token
  * 2. TokenVault - Token Treasury & Allocation Manager
  * 3. VestingManager - Vesting, Locking, and Claiming
  * 
@@ -16,19 +16,19 @@ import "dotenv/config";
 import * as fs from "fs";
 
 async function main(): Promise<void> {
-  console.log("Starting deployment process for XXX Token System...");
+  console.log("Starting deployment process for TTN Token System...");
   console.log("-------------------------------------------");
 
-  // Deploy XXXToken
-  console.log("1. Deploying XXXToken...");
-  const XXXToken = await ethers.getContractFactory("XXXToken");
-  const ttnToken = await upgrades.deployProxy(XXXToken, [], {
+  // Deploy TTNToken
+  console.log("1. Deploying TTNToken...");
+  const TTNToken = await ethers.getContractFactory("TTNToken");
+  const ttnToken = await upgrades.deployProxy(TTNToken, [], {
     initializer: "initialize",
     kind: "uups",
   });
   await ttnToken.waitForDeployment();
   const ttnTokenAddress = await ttnToken.getAddress();
-  console.log(`   XXXToken deployed to: ${ttnTokenAddress}`);
+  console.log(`   TTNToken deployed to: ${ttnTokenAddress}`);
   
   // Deploy TokenVault
   console.log("2. Deploying TokenVault...");
@@ -105,8 +105,8 @@ async function main(): Promise<void> {
   
   console.log("\n-------------------------------------------");
   console.log("Deployment Summary:");
-  console.log(`XXXToken Proxy: ${ttnTokenAddress}`);
-  console.log(`XXXToken Implementation: ${ttnTokenImplementation}`);
+  console.log(`TTNToken Proxy: ${ttnTokenAddress}`);
+  console.log(`TTNToken Implementation: ${ttnTokenImplementation}`);
   console.log(`TokenVault Proxy: ${tokenVaultAddress}`);
   console.log(`TokenVault Implementation: ${tokenVaultImplementation}`);
   console.log(`VestingManager Proxy: ${vestingManagerAddress}`);
@@ -115,7 +115,7 @@ async function main(): Promise<void> {
   
   console.log("Next steps:");
   console.log("1. Add these proxy addresses to your .env file:");
-  console.log(`   XXX_TOKEN_PROXY=${ttnTokenAddress}`);
+  console.log(`   TTN_TOKEN_PROXY=${ttnTokenAddress}`);
   console.log(`   TOKEN_VAULT_PROXY=${tokenVaultAddress}`);
   console.log(`   VESTING_MANAGER_PROXY=${vestingManagerAddress}`);
   console.log("2. Verify the implementation contracts on Basescan:");

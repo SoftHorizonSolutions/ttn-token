@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { VestingManager, XXXToken, TokenVault } from "../typechain-types";
+import { VestingManager, TTNToken, TokenVault } from "../typechain-types";
 
 describe("VestingManager", function () {
   // Role identifiers
@@ -18,7 +18,7 @@ describe("VestingManager", function () {
   let user: SignerWithAddress;
 
   // Contract instances
-  let token: XXXToken;
+  let token: TTNToken;
   let vault: TokenVault;
   let vestingManager: VestingManager;
 
@@ -26,8 +26,8 @@ describe("VestingManager", function () {
     [owner, vestingAdmin, manualUnlocker, beneficiary, user] = await ethers.getSigners();
 
     // Deploy token
-    const XXXToken = await ethers.getContractFactory("XXXToken");
-    const token = await upgrades.deployProxy(XXXToken, [], { initializer: 'initialize' });
+    const TTNToken = await ethers.getContractFactory("TTNToken");
+    const token = await upgrades.deployProxy(TTNToken, [], { initializer: 'initialize' });
     await token.waitForDeployment();
 
     // Deploy vault

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 /**
- * @title XXXVestingManagerV2
+ * @title TTNVestingManagerV2
  * @dev TESTING PURPOSES ONLY - DO NOT USE IN PRODUCTION
  * This is a test implementation of VestingManager V2 to demonstrate upgrade functionality.
  * It adds version tracking and additional vesting tracking for testing purposes.
@@ -9,14 +9,14 @@
 
 pragma solidity ^0.8.24;
 
-import "../XXXVestingManager.sol";
+import "../TTNVestingManager.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 
-contract XXXVestingManagerV2 is VestingManager {
+contract TTNVestingManagerV2 is VestingManager {
     // Version tracking for upgrade testing
     uint256 public version;
     // Additional counter for V2 vesting schedules

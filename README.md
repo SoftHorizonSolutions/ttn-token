@@ -1,19 +1,19 @@
-# XXX Token System
+# TTN Token System
 
-This project implements a comprehensive token system for the XXX ecosystem on the Base network with a 3-contract architecture:
+This project implements a comprehensive token system for the TTN ecosystem on the Base network with a 3-contract architecture:
 
-1. **XXXToken** - Core ERC20 Token contract
-2. **XXXTokenVault** - Token Treasury & Allocation Manager
-3. **XXXVestingManager** - Vesting, Locking, and Claiming
+1. **TTNToken** - Core ERC20 Token contract
+2. **TTNTokenVault** - Token Treasury & Allocation Manager
+3. **TTNVestingManager** - Vesting, Locking, and Claiming
 
 ## Project Structure
 
 ```
 ttn-token/
 ├── contracts/         # Smart contract source files
-│   ├── XXXToken.sol        # Core ERC20 Token
-│   ├── XXXTokenVault.sol      # Treasury & Allocation Manager
-│   └── XXXVestingManager.sol  # Vesting & Locking Manager
+│   ├── TTNToken.sol        # Core ERC20 Token
+│   ├── TTNTokenVault.sol      # Treasury & Allocation Manager
+│   └── TTNVestingManager.sol  # Vesting & Locking Manager
 ├── scripts/           # Deployment and upgrade scripts
 ├── deployments/       # Deployment artifacts
 ├── .env.example       # Example environment configuration
@@ -24,12 +24,12 @@ ttn-token/
 
 ## Key Features
 
-The XXX token system implements the following features:
+The TTN token system implements the following features:
 
 - **3-Contract Architecture**:
-  - **XXXToken**: Core ERC20 with minting, burning, pausing, and upgradeability
-  - **XXXTokenVault**: Manages token allocations, airdrops, and minting control
-  - **XXXVestingManager**: Handles vesting schedules, locking, unlocking, and claims
+  - **TTNToken**: Core ERC20 with minting, burning, pausing, and upgradeability
+  - **TTNTokenVault**: Manages token allocations, airdrops, and minting control
+  - **TTNVestingManager**: Handles vesting schedules, locking, unlocking, and claims
 
 - **Upgradeable Architecture**: All contracts use the UUPS (Universal Upgradeable Proxy Standard) pattern for future upgrades
 

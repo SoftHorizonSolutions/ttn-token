@@ -5,9 +5,9 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 
 
 // Import the contract type
-import { XXXToken } from "../typechain-types";
+import { TTNToken } from "../typechain-types";
 
-describe("XXXToken", function () {
+describe("TTNToken", function () {
   // Test roles
   const DEFAULT_ADMIN_ROLE = "0x0000000000000000000000000000000000000000000000000000000000000000";
   const PAUSER_ROLE = ethers.keccak256(ethers.toUtf8Bytes("PAUSER_ROLE"));
@@ -23,13 +23,13 @@ describe("XXXToken", function () {
   let user2: SignerWithAddress;
 
   // Contract instance
-  let token: XXXToken;
+  let token: TTNToken;
 
   async function deployTokenFixture() {
     [owner, minter, pauser, upgrader, user1, user2] = await ethers.getSigners();
 
-    const XXXToken = await ethers.getContractFactory("XXXToken");
-    const token = await upgrades.deployProxy(XXXToken, [], { initializer: 'initialize' });
+    const TTNToken = await ethers.getContractFactory("TTNToken");
+    const token = await upgrades.deployProxy(TTNToken, [], { initializer: 'initialize' });
     await token.waitForDeployment();
 
     // Grant roles to test accounts
@@ -57,8 +57,8 @@ describe("XXXToken", function () {
     });
 
     it("Should set the correct token name and symbol", async function () {
-      expect(await token.name()).to.equal("XXX");
-      expect(await token.symbol()).to.equal("XXX");
+      expect(await token.name()).to.equal("TTN");
+      expect(await token.symbol()).to.equal("TTN");
     });
 
     it("Should set the correct max supply", async function () {

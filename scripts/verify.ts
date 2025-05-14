@@ -12,12 +12,12 @@ async function main(): Promise<void> {
   console.log("-------------------------------------------");
   
   // Get proxy addresses from environment
-  const ttnTokenProxy = process.env.XXX_TOKEN_PROXY;
+  const ttnTokenProxy = process.env.TTN_TOKEN_PROXY;
   const tokenVaultProxy = process.env.TOKEN_VAULT_PROXY;
   const vestingManagerProxy = process.env.VESTING_MANAGER_PROXY;
   
   const missingAddresses = [];
-  if (!ttnTokenProxy) missingAddresses.push("XXX_TOKEN_PROXY");
+  if (!ttnTokenProxy) missingAddresses.push("TTN_TOKEN_PROXY");
   if (!tokenVaultProxy) missingAddresses.push("TOKEN_VAULT_PROXY");
   if (!vestingManagerProxy) missingAddresses.push("VESTING_MANAGER_PROXY");
   
@@ -32,11 +32,11 @@ async function main(): Promise<void> {
   if (ttnTokenProxy) {
     try {
       const ttnTokenImplementation = await upgrades.erc1967.getImplementationAddress(ttnTokenProxy);
-      console.log(`XXXToken Implementation: ${ttnTokenImplementation}`);
+      console.log(`TTNToken Implementation: ${ttnTokenImplementation}`);
       console.log(`Verification command: npx hardhat verify --network base_goerli ${ttnTokenImplementation}`);
       console.log("-------------------------------------------");
     } catch (error) {
-      console.error(`Error getting XXXToken implementation: ${error}`);
+      console.error(`Error getting TTNToken implementation: ${error}`);
     }
   }
   

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 /**
- * @title XXXTokenVaultV2
+ * @title TTNTokenVaultV2
  * @dev TESTING PURPOSES ONLY - DO NOT USE IN PRODUCTION
  * This is a test implementation of TokenVault V2 to demonstrate upgrade functionality.
  * It adds version tracking and additional allocation tracking for testing purposes.
@@ -9,13 +9,13 @@
 
 pragma solidity ^0.8.24;
 
-import "../XXXTokenVault.sol";
+import "../TTNTokenVault.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract XXXTokenVaultV2 is TokenVault {
+contract TTNTokenVaultV2 is TokenVault {
     // Version tracking for upgrade testing
     uint256 public version;
     // Additional counter for V2 allocations

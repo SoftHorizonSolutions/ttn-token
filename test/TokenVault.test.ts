@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { TokenVault, XXXToken } from "../typechain-types";
+import { TokenVault, TTNToken } from "../typechain-types";
 
 describe("TokenVault", function () {
   // Role identifiers
@@ -20,15 +20,15 @@ describe("TokenVault", function () {
   let user: SignerWithAddress;
 
   // Contract instances
-  let token: XXXToken;
+  let token: TTNToken;
   let vault: TokenVault;
 
   async function deployVaultFixture() {
     [owner, allocator, airdropper, vestingManager, beneficiary1, beneficiary2, user] = await ethers.getSigners();
 
     // Deploy token
-    const XXXToken = await ethers.getContractFactory("XXXToken");
-    const token = await upgrades.deployProxy(XXXToken, [], { initializer: 'initialize' });
+    const TTNToken = await ethers.getContractFactory("TTNToken");
+    const token = await upgrades.deployProxy(TTNToken, [], { initializer: 'initialize' });
     await token.waitForDeployment();
 
     // Deploy vault

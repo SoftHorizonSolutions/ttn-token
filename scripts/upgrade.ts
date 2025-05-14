@@ -1,7 +1,7 @@
 /**
- * Upgrade script for XXX Token System
+ * Upgrade script for TTN Token System
  * 
- * This script upgrades the implementation of the XXX token system's contracts.
+ * This script upgrades the implementation of the TTN token system's contracts.
  * The proxy addresses must be set in the .env file.
  */
 
@@ -11,7 +11,7 @@ import "dotenv/config";
 import * as fs from "fs";
 
 enum ContractType {
-  XXXToken,
+  TTNToken,
   TokenVault,
   VestingManager
 }
@@ -23,9 +23,9 @@ async function upgradeContract(contractType: ContractType): Promise<void> {
   
   // Determine which contract to upgrade
   switch (contractType) {
-    case ContractType.XXXToken:
-      proxyAddress = process.env.XXX_TOKEN_PROXY;
-      contractName = "XXXToken";
+    case ContractType.TTNToken:
+      proxyAddress = process.env.TTN_TOKEN_PROXY;
+      contractName = "TTNToken";
       break;
     case ContractType.TokenVault:
       proxyAddress = process.env.TOKEN_VAULT_PROXY;
@@ -66,7 +66,7 @@ async function upgradeContract(contractType: ContractType): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  console.log("Starting upgrade process for XXX Token System...");
+  console.log("Starting upgrade process for TTN Token System...");
   console.log("-------------------------------------------");
   
   // Ask which contract to upgrade
@@ -75,7 +75,7 @@ async function main(): Promise<void> {
   
   if (args.length > 0) {
     if (args[0].toLowerCase() === "token" || args[0].toLowerCase() === "ttntoken") {
-      contractToUpgrade = ContractType.XXXToken;
+      contractToUpgrade = ContractType.TTNToken;
     } else if (args[0].toLowerCase() === "vault" || args[0].toLowerCase() === "tokenvault") {
       contractToUpgrade = ContractType.TokenVault;
     } else if (args[0].toLowerCase() === "vesting" || args[0].toLowerCase() === "vestingmanager") {
@@ -94,7 +94,7 @@ async function main(): Promise<void> {
   try {
     if (contractToUpgrade === -1) {
       // Upgrade all contracts
-      await upgradeContract(ContractType.XXXToken);
+      await upgradeContract(ContractType.TTNToken);
       console.log("-------------------------------------------");
       await upgradeContract(ContractType.TokenVault);
       console.log("-------------------------------------------");

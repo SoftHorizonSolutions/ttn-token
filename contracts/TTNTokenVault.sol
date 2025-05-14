@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 /**
- * @title XXXTokenVault
+ * @title TTNTokenVault
  * @author https://github.com/spikeyrock
- * @dev Token Treasury & Allocation Manager for XXXToken
+ * @dev Token Treasury & Allocation Manager for TTNToken
  * - Manages minting of tokens through allocations
  * - Handles airdrops to multiple addresses
  * - Allows revocation of allocations
@@ -16,7 +16,7 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import "./XXXToken.sol";
+import "./TTNToken.sol";
 
 contract TokenVault is Initializable, 
     AccessControlUpgradeable, 
@@ -30,7 +30,7 @@ contract TokenVault is Initializable,
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
     // State variables
-    XXXToken public ttnToken;
+    TTNToken public ttnToken;
     address public vestingManager;
 
     // Events
@@ -77,7 +77,7 @@ contract TokenVault is Initializable,
 
     /**
      * @dev Initializes the contract replacing the constructor for upgradeable contracts
-     * @param _ttnToken Address of the XXXToken contract
+     * @param _ttnToken Address of the TTNToken contract
      */
     function initialize(address _ttnToken) external initializer {
          if (_ttnToken == address(0)) revert ZeroAddress("token");
@@ -87,7 +87,7 @@ contract TokenVault is Initializable,
         __ReentrancyGuard_init();
         
        
-        ttnToken = XXXToken(_ttnToken);
+        ttnToken = TTNToken(_ttnToken);
         
         // Grant admin roles to deployer
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);

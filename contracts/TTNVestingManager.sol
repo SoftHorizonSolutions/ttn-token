@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 /**
- * @title XXXVestingManager
+ * @title TTNVestingManager
  * @author https://github.com/spikeyrock
- * @dev Manages vesting schedules, locking, unlocking, and claiming of XXX tokens
+ * @dev Manages vesting schedules, locking, unlocking, and claiming of TTN tokens
  * - Create vesting schedules for beneficiaries
  * - Lock tokens according to vesting schedules
  * - Unlock tokens based on schedule or manually
@@ -17,8 +17,8 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import "./XXXToken.sol";
-import "./XXXTokenVault.sol";
+import "./TTNToken.sol";
+import "./TTNTokenVault.sol";
 
 contract VestingManager is Initializable, 
     AccessControlUpgradeable, 
@@ -32,7 +32,7 @@ contract VestingManager is Initializable,
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
     // State variables
-    XXXToken public ttnToken;
+    TTNToken public ttnToken;
     TokenVault public tokenVault;
 
     // Vesting schedule structure
@@ -109,7 +109,7 @@ contract VestingManager is Initializable,
 
     /**
      * @dev Initializes the contract replacing the constructor for upgradeable contracts
-     * @param _ttnToken Address of the XXXToken contract
+     * @param _ttnToken Address of the TTNToken contract
      * @param _tokenVault Address of the TokenVault contract
      */
     function initialize(address _ttnToken, address _tokenVault) external initializer {
@@ -121,7 +121,7 @@ contract VestingManager is Initializable,
         __ReentrancyGuard_init();
         
         
-        ttnToken = XXXToken(_ttnToken);
+        ttnToken = TTNToken(_ttnToken);
         tokenVault = TokenVault(_tokenVault);
         
         // Grant admin roles to deployer

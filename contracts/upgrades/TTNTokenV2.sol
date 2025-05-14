@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "../XXXToken.sol";
+import "../TTNToken.sol";
 
 /**
- * @title XXXTokenV2
- * @dev This is a demonstration contract for testing the upgradeability of XXXToken.
+ * @title TTNTokenV2
+ * @dev This is a demonstration contract for testing the upgradeability of TTNToken.
  * It serves as a simple example of how to implement contract upgrades using the UUPS pattern.
  * 
  * Key features:
- * - Inherits all functionality from XXXToken
+ * - Inherits all functionality from TTNToken
  * - Adds a version number to demonstrate upgrade success
  * - Uses reinitializer to safely initialize new state variables
  * 
@@ -20,7 +20,7 @@ import "../XXXToken.sol";
  * 
  * @custom:oz-upgrades-validate-as-initializer
  */
-contract XXXTokenV2 is XXXToken {
+contract TTNTokenV2 is TTNToken {
     /// @notice The version number of this contract implementation
     uint256 public version;
 
@@ -33,7 +33,7 @@ contract XXXTokenV2 is XXXToken {
      */
     function initializeV2() external reinitializer(2) {
         // Initialize parent contracts
-        __ERC20_init("XXX Token", "XXX");
+        __ERC20_init("TTN Token", "TTN");
         __ERC20Capped_init(1000000000 * 10**18); // 1 billion tokens
         __Ownable_init(msg.sender);
         __AccessControl_init();
