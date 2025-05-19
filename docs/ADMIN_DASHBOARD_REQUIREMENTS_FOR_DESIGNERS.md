@@ -127,11 +127,7 @@ The system has only the admin roles that need to be managed through the dashboar
           - Warning message about revocation consequences
           - Double confirmation requirement for revocation.
           - Success/failure notifications with returned amount
-  
-     - **GET SCHEDULES FOR BENEFICIARY**: View function to get  all vesting schedules for a beneficiary.
-        - Parameters:
-          - `beneficiary` (address): Address to check schedules for
-          - Returns an array of schedule IDs associated with the beneficiary.
+
   
      - **GET SCHEDULE FOR SCHEDULE-ID**: View function to get details of a specific vesting schedule
         - Parameters:
@@ -168,9 +164,46 @@ The system has only the admin roles that need to be managed through the dashboar
              - Still locked amount
              - Time until next unlock
 
+     - **GET/VIEW ALL VESTING SCHEDULES FOR A WALLET**: View all vesting schedules for a specific wallet address.
+        - Parameters:
+          - `walletAddress` (address): The wallet address to view schedules.
+        - Returns:
+          - Array of schedule IDs for the wallet
+        - Interface requirements:
+          - Wallet address input field
+          - Display list of all vesting schedules for the wallet
+          - Clicking on a schedule ID opens detailed view on a schedule using `getVestingSchedule(scheduleId)`
+          - Detailed view shows:
+            - Total amount
+            - Start time
+            - Cliff duration
+            - Duration
+            - Released amount
+            - Creation time
+            - Allocation ID
+            - Beneficiary
+            - Revocation status
+            - 
 
+     - **GET TOKEN BALANCE**: Get the token balance for a wallet address
+        - Parameters:
+          - `walletAddress` (address): The wallet address to check balance
+        - Returns:
+          - `uint256`: The token balance of the wallet
+        - Interface requirements:
+          - Wallet address input field
+          - Display token balance with proper formatting (18 decimals)
+          - Show balance in both wei and human-readable format
 
-
+     - **GET TOTAL MINTED**: View the total amount of tokens minted
+        - Parameters:
+          - None.
+        - Returns:
+          - `uint256`: Total supply of tokens minted.
+        - Interface requirements:
+          - Display total minted amount.
+          - Show amount human-readable format.
+          - Update in real-time when new tokens are minted.
 
 ## Technical Integration Requirements FOR DEVS
 
