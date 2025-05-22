@@ -38,7 +38,7 @@ describe("VestingManager", function () {
     // Deploy vesting manager
     const VestingManager = await ethers.getContractFactory("VestingManager");
     const vestingManager = await upgrades.deployProxy(VestingManager, 
-      [await token.getAddress(), await vault.getAddress()], 
+      [await token.getAddress(), await vault.getAddress(), owner.address], 
       { initializer: 'initialize' }
     );
     await vestingManager.waitForDeployment();
@@ -79,18 +79,25 @@ describe("VestingManager", function () {
     const duration = 3600 * 24 * 365; // 1 year
 
     it("Should allow vesting admin to create a vesting schedule", async function () {
-      const tx = await vestingManager.connect(owner).createVestingSchedule(
+      // First create an allocation in the vault
+      const allocationAmount = ethers.parseEther("2000"); // More than vesting amount
+      const tx = await vault.connect(owner).createAllocation(beneficiary.address, allocationAmount);
+      const receipt = await tx.wait();
+      const event = receipt?.logs[0];
+      const allocationId = event?.topics[3] ? BigInt(event.topics[3]) : BigInt(0);
+      
+      const vestingTx = await vestingManager.connect(owner).createVestingSchedule(
         beneficiary.address,
         amount,
         startTime,
         cliffDuration,
         duration,
-        0 // no allocation ID
+        allocationId // Use the returned allocation ID
       );
 
-      const receipt = await tx.wait();
-      const event = receipt?.logs[0];
-      const scheduleId = event?.topics[1] ? BigInt(event.topics[1]) : BigInt(0);
+      const vestingReceipt = await vestingTx.wait();
+      const vestingEvent = vestingReceipt?.logs[0];
+      const scheduleId = vestingEvent?.topics[1] ? BigInt(vestingEvent.topics[1]) : BigInt(0);
 
       expect(await vestingManager.getVestingSchedule(scheduleId)).to.exist;
     });
@@ -105,7 +112,7 @@ describe("VestingManager", function () {
           duration,
           0
         )
-      ).to.be.revertedWithCustomError(vestingManager, "AccessControlUnauthorizedAccount");
+      ).to.be.revertedWithCustomError(vestingManager, "NotAuthorized");
     });
 
     it("Should not allow creating schedule with zero amount", async function () {
@@ -161,13 +168,30 @@ describe("VestingManager", function () {
 
     it("Should not allow release before cliff", async function () {
       await expect(
-        vestingManager.connect(beneficiary).release(scheduleId)
+        vestingManager.connect(beneficiary).claimVestedTokens(scheduleId)
       ).to.be.revertedWithCustomError(vestingManager, "NoTokensDue");
+    });
+
+    it("Should not allow claiming tokens that are only allocated but not scheduled", async function () {
+      // Create an allocation
+      const amount = ethers.parseEther("1000");
+      await vault.connect(owner).createAllocation(
+        beneficiary.address,
+        amount
+      );
+
+      // Try to claim tokens before creating a vesting schedule
+      await expect(
+        vestingManager.connect(beneficiary).claimVestedTokens(0) // Try to claim first schedule
+      ).to.be.revertedWithCustomError(vestingManager, "InvalidScheduleId");
+
+      // Verify beneficiary has no tokens
+      expect(await token.balanceOf(beneficiary.address)).to.equal(0);
     });
 
     it("Should not allow non-beneficiary to release tokens", async function () {
       await expect(
-        vestingManager.connect(user).release(scheduleId)
+        vestingManager.connect(user).claimVestedTokens(scheduleId)
       ).to.be.revertedWithCustomError(vestingManager, "NotBeneficiary");
     });
 
@@ -254,7 +278,7 @@ describe("VestingManager", function () {
     it("Should not allow non-manual-unlocker to unlock tokens", async function () {
       await expect(
         vestingManager.connect(user).manualUnlock(scheduleId, ethers.parseEther("100"))
-      ).to.be.revertedWithCustomError(vestingManager, "AccessControlUnauthorizedAccount");
+      ).to.be.revertedWithCustomError(vestingManager, "NotAuthorized");
     });
   });
 
@@ -295,7 +319,7 @@ describe("VestingManager", function () {
     it("Should not allow non-admin to revoke schedule", async function () {
       await expect(
         vestingManager.connect(user).revokeSchedule(scheduleId)
-      ).to.be.revertedWithCustomError(vestingManager, "AccessControlUnauthorizedAccount");
+      ).to.be.revertedWithCustomError(vestingManager, "NotAuthorized");
     });
 
     it("Should not allow revoking already revoked schedule", async function () {

@@ -35,7 +35,6 @@ contract TTNTokenVaultV2 is TokenVault {
         __AccessControl_init();
         __Pausable_init();
         __UUPSUpgradeable_init();
-
         
         
         version = 2;

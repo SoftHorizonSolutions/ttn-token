@@ -2,14 +2,13 @@ import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { VestingManager} from "../../typechain-types";
+import { VestingManager, TokenVault, TTNToken } from "../../typechain-types";
 
+// Role identifiers
+const DEFAULT_ADMIN_ROLE = ethers.keccak256(ethers.toUtf8Bytes("DEFAULT_ADMIN_ROLE"));
 
 describe("VestingManager Upgrades", function () {
-  // Role identifiers
-  const UPGRADER_ROLE = ethers.keccak256(ethers.toUtf8Bytes("UPGRADER_ROLE"));
-  const VESTING_ADMIN_ROLE = ethers.keccak256(ethers.toUtf8Bytes("VESTING_ADMIN_ROLE"));
-
+  
   // Test accounts
   let owner: SignerWithAddress;
   let upgrader: SignerWithAddress;
@@ -17,8 +16,10 @@ describe("VestingManager Upgrades", function () {
   let beneficiary: SignerWithAddress;
   let user: SignerWithAddress;
 
- 
+  // Contract instances
   let vestingManager: VestingManager;
+  let vault: TokenVault;
+  let token: TTNToken;
 
   async function deployFixture() {
     [owner, upgrader, vestingAdmin, beneficiary, user] = await ethers.getSigners();
@@ -36,22 +37,19 @@ describe("VestingManager Upgrades", function () {
     // Deploy vesting manager
     const VestingManager = await ethers.getContractFactory("VestingManager");
     const vestingManager = await upgrades.deployProxy(VestingManager, 
-      [await token.getAddress(), await vault.getAddress()], 
+      [await token.getAddress(), await vault.getAddress(), owner.address], 
       { initializer: 'initialize' }
     );
     await vestingManager.waitForDeployment();
-    
-    // Grant roles
-    const MINTER_ROLE = ethers.keccak256(ethers.toUtf8Bytes("MINTER_ROLE"));
-    await token.grantRole(MINTER_ROLE, await vault.getAddress());
-    await vestingManager.grantRole(UPGRADER_ROLE, upgrader.address);
-    await vestingManager.grantRole(VESTING_ADMIN_ROLE, vestingAdmin.address);
 
-    return {vestingManager, owner, upgrader, vestingAdmin, beneficiary, user };
+    // Grant DEFAULT_ADMIN_ROLE to owner
+    await vestingManager.grantRole(DEFAULT_ADMIN_ROLE, owner.address);
+
+    return {vestingManager, vault, token, owner, upgrader, vestingAdmin, beneficiary, user };
   }
 
   beforeEach(async function () {
-    ({ vestingManager, owner, upgrader, vestingAdmin, beneficiary, user } = 
+    ({ vestingManager, vault, token, owner, upgrader, vestingAdmin, beneficiary, user } = 
       await loadFixture(deployFixture));
   });
 
@@ -61,7 +59,10 @@ describe("VestingManager Upgrades", function () {
       const VestingManagerV2 = await ethers.getContractFactory("TTNVestingManagerV2");
       
       // Upgrade to V2
-      const upgraded = await upgrades.upgradeProxy(await vestingManager.getAddress(), VestingManagerV2);
+      const upgraded = await upgrades.upgradeProxy(
+        await vestingManager.getAddress(), 
+        await VestingManagerV2.connect(owner)
+      );
       await upgraded.initializeV2();
       
       // Verify new functionality
@@ -84,7 +85,7 @@ describe("VestingManager Upgrades", function () {
       const cliffDuration = 3600 * 24 * 30;
       const duration = 3600 * 24 * 365;
 
-      const tx = await vestingManager.connect(vestingAdmin).createVestingSchedule(
+      const tx = await vestingManager.connect(owner).createVestingSchedule(
         beneficiary.address,
         amount,
         startTime,
@@ -126,6 +127,7 @@ describe("VestingManager Upgrades", function () {
     });
 
     it("Should maintain access control after upgrade", async function () {
+     
       // Get V2 contract factory
       const VestingManagerV2 = await ethers.getContractFactory("TTNVestingManagerV2");
       
@@ -133,9 +135,26 @@ describe("VestingManager Upgrades", function () {
       const upgraded = await upgrades.upgradeProxy(await vestingManager.getAddress(), VestingManagerV2);
       await upgraded.initializeV2();
       
-      // Verify roles are preserved
-      expect(await upgraded.hasRole(VESTING_ADMIN_ROLE, vestingAdmin.address)).to.be.true;
-      expect(await upgraded.hasRole(UPGRADER_ROLE, upgrader.address)).to.be.true;
+      
+      // Verify roles are preserved in the vesting manager
+      expect(await upgraded.hasRole(DEFAULT_ADMIN_ROLE, owner.address)).to.be.true;
+    });
+
+    it("Should not allow claiming tokens that are only allocated but not scheduled", async function () {
+      // Create an allocation
+      const amount = ethers.parseEther("1000");
+      await vault.connect(owner).createAllocation(
+        beneficiary.address,
+        amount
+      );
+
+      // Try to claim tokens before creating a vesting schedule
+      await expect(
+        vestingManager.connect(beneficiary).claimVestedTokens(0) // Try to claim first schedule
+      ).to.be.revertedWithCustomError(vestingManager, "InvalidScheduleId");
+
+      // Verify beneficiary has no tokens
+      expect(await token.balanceOf(beneficiary.address)).to.equal(0);
     });
   });
 }); 

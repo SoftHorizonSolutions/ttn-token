@@ -17,8 +17,8 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import "./TTNToken.sol";
-import "./TTNTokenVault.sol";
+import "./interfaces/ITTNToken.sol";
+import "./interfaces/ITokenVault.sol";
 
 contract VestingManager is Initializable, 
     AccessControlUpgradeable, 
@@ -26,14 +26,9 @@ contract VestingManager is Initializable,
     PausableUpgradeable,
     ReentrancyGuardUpgradeable {
 
-    // Role identifiers
-    bytes32 public constant VESTING_ADMIN_ROLE = keccak256("VESTING_ADMIN_ROLE");
-    bytes32 public constant MANUAL_UNLOCK_ROLE = keccak256("MANUAL_UNLOCK_ROLE");
-    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
-
     // State variables
-    TTNToken public ttnToken;
-    TokenVault public tokenVault;
+    ITTNToken public ttnToken;
+    ITokenVault public tokenVault;
 
     // Vesting schedule structure
     struct VestingSchedule {
@@ -97,6 +92,8 @@ contract VestingManager is Initializable,
     error ScheduleRevokeed();
     error AmountExceedsRemaining();
     error NoTokensToRevoke();
+    error NotAuthorized();
+    error NotAllocated();
 
     /**
      * @dev Prevents the implementation contract from being initialized
@@ -111,24 +108,22 @@ contract VestingManager is Initializable,
      * @dev Initializes the contract replacing the constructor for upgradeable contracts
      * @param _ttnToken Address of the TTNToken contract
      * @param _tokenVault Address of the TokenVault contract
+     * @param _admin Address of the admin
      */
-    function initialize(address _ttnToken, address _tokenVault) external initializer {
+    function initialize(address _ttnToken, address _tokenVault, address _admin) external initializer {
        if (_ttnToken == address(0)) revert ZeroAddress("token");
        if (_tokenVault == address(0)) revert ZeroAddress("vault");
+       if (_admin == address(0)) revert ZeroAddress("admin");
         __AccessControl_init();
         __UUPSUpgradeable_init();
         __Pausable_init();
         __ReentrancyGuard_init();
         
+        ttnToken = ITTNToken(_ttnToken);
+        tokenVault = ITokenVault(_tokenVault);
         
-        ttnToken = TTNToken(_ttnToken);
-        tokenVault = TokenVault(_tokenVault);
-        
-        // Grant admin roles to deployer
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(VESTING_ADMIN_ROLE, msg.sender);
-        _grantRole(MANUAL_UNLOCK_ROLE, msg.sender);
-        _grantRole(UPGRADER_ROLE, msg.sender);
+        // Grant admin roles to specified admin
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         
         _vestingScheduleCounter = 0;
     }
@@ -152,16 +147,27 @@ contract VestingManager is Initializable,
         uint256 allocationId
     ) 
         external 
-        onlyRole(VESTING_ADMIN_ROLE)
         whenNotPaused
         nonReentrant
         returns (uint256) 
     {
+        if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender) && !tokenVault.isManager(msg.sender)) {
+            revert NotAuthorized();
+        }
+
         if (beneficiary == address(0)) revert ZeroAddress("beneficiary");
         if (totalAmount == 0) revert InvalidAmount();
         if (duration == 0) revert InvalidDuration();
         if (duration < cliffDuration) revert InvalidCliffDuration();
         if (startTime < block.timestamp) revert InvalidStartTime();
+
+        // Check allocation exists and has enough amount only if allocationId is not 0
+        if (allocationId != 0) {
+            (uint256 allocatedAmount, address allocationBeneficiary, bool revoked) = tokenVault.getAllocationById(allocationId);
+            if (allocationBeneficiary != beneficiary) revert NotBeneficiary();
+            if (revoked) revert NotAllocated();
+            if (allocatedAmount < totalAmount) revert InvalidAmount();
+        }
         
         // Increment vesting schedule counter
         _vestingScheduleCounter++;
@@ -232,7 +238,7 @@ contract VestingManager is Initializable,
      * @param scheduleId ID of the vesting schedule
      * @return The amount of tokens claimed
      */
-    function release(uint256 scheduleId) 
+    function claimVestedTokens(uint256 scheduleId) 
         external 
         whenNotPaused
         nonReentrant
@@ -241,6 +247,7 @@ contract VestingManager is Initializable,
         if (scheduleId == 0 || scheduleId > _vestingScheduleCounter) revert InvalidScheduleId();
         
         VestingSchedule storage schedule = vestingSchedules[scheduleId];
+        if (schedule.revoked) revert ScheduleRevokeed();
         if (msg.sender != schedule.beneficiary) revert NotBeneficiary();
         
         uint256 releasableAmount = computeReleasableAmount(scheduleId);
@@ -251,6 +258,20 @@ contract VestingManager is Initializable,
         
         // Transfer tokens to beneficiary
         if (!ttnToken.transfer(schedule.beneficiary, releasableAmount)) revert TransferFailed();
+        
+        // Reduce the allocated amount in TokenVault if allocationId is set
+        if (schedule.allocationId > 0) {
+            (uint256 allocatedAmount, , bool revoked) = tokenVault.getAllocationById(schedule.allocationId);
+            uint256 vestedAmount = schedule.releasedAmount;
+            if (!revoked && allocatedAmount >= vestedAmount) {
+                tokenVault.reduceAllocation(schedule.allocationId, vestedAmount);
+            }
+        }
+
+        // Mark schedule as revoked if all tokens are claimed
+        if (schedule.releasedAmount >= schedule.totalAmount) {
+            schedule.revoked = true;
+        }
         
         emit TokensReleased(scheduleId, schedule.beneficiary, releasableAmount);
         
@@ -264,11 +285,13 @@ contract VestingManager is Initializable,
      * @return success Whether the manual unlock was successful
      */
     function manualUnlock(uint256 scheduleId, uint256 amount) 
-        external 
-        onlyRole(MANUAL_UNLOCK_ROLE)
+        external
         nonReentrant
         returns (bool) 
     {
+        if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender) && !tokenVault.isManager(msg.sender)) {
+            revert NotAuthorized();
+        }
         if (scheduleId == 0 || scheduleId > _vestingScheduleCounter) revert InvalidScheduleId();
         if (amount == 0) revert InvalidAmount();
         
@@ -283,6 +306,15 @@ contract VestingManager is Initializable,
         
         // Transfer tokens to beneficiary
         if (!ttnToken.transfer(schedule.beneficiary, amount)) revert TransferFailed();
+
+        // Reduce the allocated amount in TokenVault if allocationId is set
+        if (schedule.allocationId > 0) {
+            (uint256 allocatedAmount, , bool revoked) = tokenVault.getAllocationById(schedule.allocationId);
+            uint256 vestedAmount = schedule.releasedAmount;
+            if (!revoked && allocatedAmount >= vestedAmount) {
+                tokenVault.reduceAllocation(schedule.allocationId, vestedAmount);
+            }
+        }
         
         emit ManualUnlock(scheduleId, schedule.beneficiary, amount, msg.sender);
         
@@ -296,21 +328,22 @@ contract VestingManager is Initializable,
      */
     function revokeSchedule(uint256 scheduleId) 
         external 
-        onlyRole(VESTING_ADMIN_ROLE)
         nonReentrant
         returns (uint256) 
     {
+         if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender) && !tokenVault.isManager(msg.sender)) {
+            revert NotAuthorized();
+        }
         if (scheduleId == 0 || scheduleId > _vestingScheduleCounter) revert InvalidScheduleId();
         
         VestingSchedule storage schedule = vestingSchedules[scheduleId];
         if (schedule.revoked) revert ScheduleRevokeed();
         
-        // Calculate remaining tokens
-        uint256 releasableAmount = computeReleasableAmount(scheduleId);
-        uint256 remainingAmount = schedule.totalAmount - schedule.releasedAmount - releasableAmount;
+        // Calculate unvested amount
+        uint256 unvestedAmount = schedule.totalAmount - schedule.releasedAmount;
         
         // Ensure there are tokens to revoke
-        if (remainingAmount == 0) revert NoTokensToRevoke();
+        if (unvestedAmount == 0) revert NoTokensToRevoke();
         
         // Mark schedule as revoked
         schedule.revoked = true;
@@ -320,12 +353,9 @@ contract VestingManager is Initializable,
             tokenVault.revokeAllocation(schedule.allocationId);
         }
         
-        // Transfer remaining tokens to beneficiary
-        if (!ttnToken.transfer(schedule.beneficiary, remainingAmount)) revert TransferFailed();
+        emit ScheduleRevoked(scheduleId, schedule.beneficiary, unvestedAmount);
         
-        emit ScheduleRevoked(scheduleId, schedule.beneficiary, remainingAmount);
-        
-        return remainingAmount;
+        return unvestedAmount;
     }
 
     /**
@@ -417,5 +447,5 @@ contract VestingManager is Initializable,
      * 
      * @param newImplementation Address of the new implementation contract
      */
-    function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE) {}
+    function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 }
