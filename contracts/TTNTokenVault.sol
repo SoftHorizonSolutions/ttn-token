@@ -16,28 +16,43 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import "./TTNToken.sol";
+import "./interfaces/ITTNToken.sol";
 
-contract TokenVault is Initializable, 
-    AccessControlUpgradeable, 
-    UUPSUpgradeable, 
+contract TokenVault is
+    Initializable,
+    AccessControlUpgradeable,
+    UUPSUpgradeable,
     PausableUpgradeable,
-    ReentrancyGuardUpgradeable {
-
+    ReentrancyGuardUpgradeable
+{
     // Role identifiers
-    bytes32 public constant ALLOCATOR_ROLE = keccak256("ALLOCATOR_ROLE");
-    bytes32 public constant AIRDROP_ROLE = keccak256("AIRDROP_ROLE");
-    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+    bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
 
     // State variables
-    TTNToken public ttnToken;
-    address public vestingManager;
+    ITTNToken public ttnToken;
+    address public vestingManagerAddress;
+    address[] private _managers;
 
     // Events
-    event AllocationCreated(address indexed beneficiary, uint256 amount, uint256 allocationId);
-    event AllocationRevoked(address indexed beneficiary, uint256 amount, uint256 allocationId);
-    event AirdropExecuted(address[] beneficiaries, uint256[] amounts, uint256 airdropId);
+    event AllocationCreated(
+        address indexed beneficiary,
+        uint256 amount,
+        uint256 allocationId
+    );
+    event AllocationRevoked(
+        address indexed beneficiary,
+        uint256 amount,
+        uint256 allocationId
+    );
+    event AirdropExecuted(
+        address[] beneficiaries,
+        uint256[] amounts,
+        uint256 airdropId
+    );
     event VestingManagerSet(address indexed vestingManager);
+    event ManagerRemoved(address indexed manager);
+    event ManagerAssigned(address indexed manager);
+
 
     // Custom errors
     error ZeroAddress(string param);
@@ -48,10 +63,15 @@ contract TokenVault is Initializable,
     error ArraysLengthMismatch();
     error InvalidBeneficiary();
     error InvalidAmountInBatch();
+    error NotAuthorized();
+    error InvalidAddress();
+    error CannotRemoveSelf();
+    error CannotAddSelf();
 
     // Allocation counter
     uint256 private _allocationCounter;
     uint256 private _airdropCounter;
+
 
     // Allocation tracking
     struct Allocation {
@@ -59,12 +79,13 @@ contract TokenVault is Initializable,
         address beneficiary;
         bool revoked;
     }
-    
+
     // Mapping from allocation ID to Allocation
     mapping(uint256 => Allocation) public allocations;
-    
+
     // Mapping from beneficiary to their allocation IDs
     mapping(address => uint256[]) public beneficiaryAllocations;
+
 
     /**
      * @dev Prevents the implementation contract from being initialized
@@ -80,34 +101,21 @@ contract TokenVault is Initializable,
      * @param _ttnToken Address of the TTNToken contract
      */
     function initialize(address _ttnToken) external initializer {
-         if (_ttnToken == address(0)) revert ZeroAddress("token");
+        if (_ttnToken == address(0)) revert ZeroAddress("token");
         __AccessControl_init();
         __UUPSUpgradeable_init();
         __Pausable_init();
         __ReentrancyGuard_init();
-        
-       
-        ttnToken = TTNToken(_ttnToken);
-        
+
+        ttnToken = ITTNToken(_ttnToken);
+
         // Grant admin roles to deployer
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(ALLOCATOR_ROLE, msg.sender);
-        _grantRole(AIRDROP_ROLE, msg.sender);
-        _grantRole(UPGRADER_ROLE, msg.sender);
-        
+
         _allocationCounter = 0;
         _airdropCounter = 0;
     }
 
-    /**
-     * @dev Sets the VestingManager address
-     * @param _vestingManager Address of the VestingManager contract
-     */
-    function setVestingManager(address _vestingManager) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (_vestingManager == address(0)) revert ZeroAddress("vesting manager");
-        vestingManager = _vestingManager;
-        emit VestingManagerSet(_vestingManager);
-    }
 
     /**
      * @dev Creates a new allocation and mints tokens
@@ -115,38 +123,32 @@ contract TokenVault is Initializable,
      * @param amount Amount of tokens to allocate
      * @return allocationId Unique identifier for the allocation
      */
-    function createAllocation(address beneficiary, uint256 amount) 
-        external 
-        onlyRole(ALLOCATOR_ROLE) 
-        whenNotPaused 
-        nonReentrant 
-        returns (uint256) 
-    {
+    function createAllocation(
+        address beneficiary,
+        uint256 amount
+    ) external whenNotPaused nonReentrant returns (uint256) {
+        if (
+            !hasRole(MANAGER_ROLE, msg.sender) &&
+            !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)
+        ) revert NotAuthorized();
         if (beneficiary == address(0)) revert InvalidBeneficiary();
         if (amount == 0) revert InvalidAmount();
-        
-        // Increment allocation counter
+
+        // Increment allocation counter before creating allocation
         _allocationCounter++;
-        
+
         // Store allocation details
         allocations[_allocationCounter] = Allocation({
             beneficiary: beneficiary,
             amount: amount,
             revoked: false
         });
-        
+
         // Add allocation ID to beneficiary's list
         beneficiaryAllocations[beneficiary].push(_allocationCounter);
-        
-        // Mint tokens to the vesting manager (if set) or to the beneficiary
-        if (vestingManager != address(0)) {
-            ttnToken.mint(vestingManager, amount);
-        } else {
-            ttnToken.mint(beneficiary, amount);
-        }
-        
+
         emit AllocationCreated(beneficiary, amount, _allocationCounter);
-        
+
         return _allocationCounter;
     }
 
@@ -155,22 +157,28 @@ contract TokenVault is Initializable,
      * @param allocationId ID of the allocation to revoke
      * @return success Whether the revocation was successful
      */
-    function revokeAllocation(uint256 allocationId) 
-        external 
-        onlyRole(ALLOCATOR_ROLE) 
-        nonReentrant 
-        returns (bool) 
-    {
-        if (allocationId == 0 || allocationId > _allocationCounter) revert InvalidAllocationId();
-        
+    function revokeAllocation(
+        uint256 allocationId
+    ) external nonReentrant returns (bool) {
+        if (
+            !hasRole(MANAGER_ROLE, msg.sender) &&
+            !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)
+        ) revert NotAuthorized();
+        if (allocationId == 0 || allocationId > _allocationCounter)
+            revert InvalidAllocationId();
+
         Allocation storage allocation = allocations[allocationId];
         if (allocation.revoked) revert AllocationAlreadyRevoked();
-        
+
         // Mark allocation as revoked
         allocation.revoked = true;
-        
-        emit AllocationRevoked(allocation.beneficiary, allocation.amount, allocationId);
-        
+
+        emit AllocationRevoked(
+            allocation.beneficiary,
+            allocation.amount,
+            allocationId
+        );
+
         return true;
     }
 
@@ -180,47 +188,48 @@ contract TokenVault is Initializable,
      * @param amounts Array of token amounts to distribute
      * @return airdropId Unique identifier for the airdrop
      */
-    function executeAirdrop(address[] calldata beneficiaries, uint256[] calldata amounts) 
-        external 
-        onlyRole(AIRDROP_ROLE) 
-        whenNotPaused 
-        nonReentrant 
-        returns (uint256) 
-    {
+    function executeAirdrop(
+        address[] calldata beneficiaries,
+        uint256[] calldata amounts
+    ) external whenNotPaused nonReentrant returns (uint256) {
+        if (
+            !hasRole(MANAGER_ROLE, msg.sender) &&
+            !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)
+        ) revert NotAuthorized();
         if (beneficiaries.length == 0) revert EmptyBeneficiariesList();
-        if (beneficiaries.length != amounts.length) revert ArraysLengthMismatch();
-        
+        if (beneficiaries.length != amounts.length)
+            revert ArraysLengthMismatch();
+
         // Increment airdrop counter
         _airdropCounter++;
-        
+
         // Process each beneficiary
-        for (uint256 i = 0; i < beneficiaries.length; i++) {
+        uint256 i = 0;
+        while (i < beneficiaries.length) {
             if (beneficiaries[i] == address(0)) revert InvalidBeneficiary();
             if (amounts[i] == 0) revert InvalidAmountInBatch();
-            
+
             // Create an allocation for each beneficiary
             _allocationCounter++;
-            
+
             // Store allocation details
             allocations[_allocationCounter] = Allocation({
                 beneficiary: beneficiaries[i],
                 amount: amounts[i],
                 revoked: false
             });
-            
+
             // Add allocation ID to beneficiary's list
             beneficiaryAllocations[beneficiaries[i]].push(_allocationCounter);
-            
-            // Mint tokens to the vesting manager (if set) or to the beneficiary
-            if (vestingManager != address(0)) {
-                ttnToken.mint(vestingManager, amounts[i]);
-            } else {
-                ttnToken.mint(beneficiaries[i], amounts[i]);
-            }
+
+            // Mint tokens to the beneficiary
+            ttnToken.mint(beneficiaries[i], amounts[i]);
+
+            i++;
         }
-        
+
         emit AirdropExecuted(beneficiaries, amounts, _airdropCounter);
-        
+
         return _airdropCounter;
     }
 
@@ -229,12 +238,27 @@ contract TokenVault is Initializable,
      * @param beneficiary Address to check allocations for
      * @return allocationIds Array of allocation IDs for the beneficiary
      */
-    function getAllocationsForBeneficiary(address beneficiary) 
-        external 
-        view 
-        returns (uint256[] memory) 
-    {
+    function getAllocationsForBeneficiary(
+        address beneficiary
+    ) external view returns (uint256[] memory) {
         return beneficiaryAllocations[beneficiary];
+    }
+
+
+    /**
+     * @dev Returns allocation details from TokenVault
+     * @param allocationId ID of the allocation to check
+     * @return amount The allocated amount
+     * @return beneficiary The beneficiary address
+     * @return revoked Whether the allocation has been revoked
+     */
+    function getAllocationById(uint256 allocationId) external view returns (
+        uint256 amount,
+        address beneficiary,
+        bool revoked
+    ) {
+        Allocation memory allocation = allocations[allocationId];
+        return (allocation.amount, allocation.beneficiary, allocation.revoked);
     }
 
     /**
@@ -254,8 +278,99 @@ contract TokenVault is Initializable,
     /**
      * @dev Function that should revert when `msg.sender` is not authorized to upgrade the contract
      * Called by {upgradeTo} and {upgradeToAndCall}
-     * 
+     *
      * @param newImplementation Address of the new implementation contract
      */
-    function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE) {}
+    function _authorizeUpgrade(
+        address newImplementation
+    ) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
+
+
+
+    /**
+     * @dev Adds a new manager
+     * @param newManager Address of the new manager
+     */
+    function addManager(address newManager) external {
+        if (
+            !hasRole(MANAGER_ROLE, msg.sender) &&
+            !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)
+        ) revert NotAuthorized();
+        if (newManager == address(0)) revert InvalidAddress();
+        if (newManager == msg.sender) revert CannotAddSelf();
+
+        if (!hasRole(MANAGER_ROLE, newManager)) {
+            _grantRole(MANAGER_ROLE, newManager);
+            _managers.push(newManager);
+            emit ManagerAssigned(newManager);
+        }
+    }
+
+    /**
+     * @dev Removes an manager
+     * @param manager Address of the manager to remove
+     */
+    function removeManager(address manager) external {
+        if (
+            !hasRole(MANAGER_ROLE, msg.sender) &&
+            !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)
+        ) revert NotAuthorized();
+        if (manager == address(0)) revert InvalidAddress();
+        if (manager == msg.sender) revert CannotRemoveSelf();
+
+        _revokeRole(MANAGER_ROLE, manager);
+        emit ManagerRemoved(manager);
+    }
+
+    /**
+     * @dev Returns whether an address is an admin or manager
+     * @param account Address to check
+     * @return bool True if the address is either a super admin or a manager
+     */
+    function isManager(address account) external view returns (bool) {
+        return
+            hasRole(DEFAULT_ADMIN_ROLE, account) ||
+            hasRole(MANAGER_ROLE, account);
+    }
+
+    /**
+     * @dev Returns all addresses assigned the MANAGER_ROLE
+     */
+    function getAllManagers() external view returns (address[] memory) {
+        return _managers;
+    }
+
+    /**
+     * @dev Reduces an allocation amount
+     * @param allocationId ID of the allocation to reduce
+     * @param amount Amount to reduce by
+     * @return success Whether the reduction was successful
+     */
+    function reduceAllocation(
+        uint256 allocationId,
+        uint256 amount
+    ) external nonReentrant returns (bool) {
+        if (
+            !hasRole(MANAGER_ROLE, msg.sender) &&
+            !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)
+        ) revert NotAuthorized();
+        if (allocationId == 0 || allocationId > _allocationCounter)
+            revert InvalidAllocationId();
+        if (amount == 0) revert InvalidAmount();
+
+        Allocation storage allocation = allocations[allocationId];
+        if (allocation.revoked) revert AllocationAlreadyRevoked();
+        if (amount > allocation.amount) revert InvalidAmount();
+
+        // Reduce allocation amount
+        allocation.amount -= amount;
+
+        emit AllocationRevoked(
+            allocation.beneficiary,
+            amount,
+            allocationId
+        );
+
+        return true;
+    }
 }

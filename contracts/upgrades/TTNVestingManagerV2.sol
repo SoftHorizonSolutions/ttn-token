@@ -28,11 +28,10 @@ contract TTNVestingManagerV2 is VestingManager {
      * @custom:oz-upgrades-validate-as-initializer
      */
     function initializeV2() external reinitializer(2) {
-        // Initialize parent contracts
-        __ReentrancyGuard_init();
-        __AccessControl_init();
-        __Pausable_init();
+        // Initialize parent contracts except AccessControl to preserve roles
         __UUPSUpgradeable_init();
+        __Pausable_init();
+        __ReentrancyGuard_init();
         
         // Set version to 2
         version = 2;
@@ -71,7 +70,7 @@ contract TTNVestingManagerV2 is VestingManager {
         uint256 cliffDuration,
         uint256 duration,
         uint256 slicePeriodSeconds
-    ) external onlyRole(VESTING_ADMIN_ROLE) returns (uint256) {
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) returns (uint256) {
         // Input validation
         require(beneficiary != address(0), "Invalid beneficiary");
         require(amount > 0, "Amount must be greater than 0");
