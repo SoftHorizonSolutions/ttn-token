@@ -210,47 +210,23 @@ contract TokenVault is
         address[] calldata beneficiaries,
         uint256[] calldata amounts
     ) external whenNotPaused nonReentrant returns (uint256) {
-        // Check authorization
         if (
             !hasRole(MANAGER_ROLE, msg.sender) &&
             !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)
         ) revert NotAuthorized();
-
-        // Validate arrays
         if (beneficiaries.length == 0) revert EmptyBeneficiariesList();
-        if (beneficiaries.length != amounts.length) revert ArraysLengthMismatch();
-
-        // Check for duplicate addresses and validate amounts
-        uint256 totalAmount = 0;
-        uint256 i = 0;
-        while (i < beneficiaries.length) {
-            // Check for zero address
-            if (beneficiaries[i] == address(0)) revert InvalidBeneficiaryInBatch();
-            
-            // Check for zero amount
-            if (amounts[i] == 0) revert InvalidAmountInBatch();
-            
-            // Check for duplicates
-            uint256 j = 0;
-            while (j < i) {
-                if (beneficiaries[i] == beneficiaries[j]) revert DuplicateBeneficiary();
-                j++;
-            }
-            
-            // Safe math for total amount
-            totalAmount += amounts[i];
-            i++;
-        }
-
-        // Check if total amount exceeds max supply
-        if (totalAmount > 1_000_000_000 * 10 ** 18) revert("Total amount exceeds max supply");
+        if (beneficiaries.length != amounts.length)
+            revert ArraysLengthMismatch();
 
         // Increment airdrop counter
         _airdropCounter++;
 
         // Process each beneficiary
-        i = 0;
+        uint256 i = 0;
         while (i < beneficiaries.length) {
+            if (beneficiaries[i] == address(0)) revert InvalidBeneficiary();
+            if (amounts[i] == 0) revert InvalidAmountInBatch();
+
             // Create an allocation for each beneficiary
             _allocationCounter++;
 
@@ -274,6 +250,7 @@ contract TokenVault is
 
         return _airdropCounter;
     }
+
 
     /**
      * @dev Returns all allocations for a beneficiary
