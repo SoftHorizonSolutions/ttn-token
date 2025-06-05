@@ -331,7 +331,7 @@ describe("VestingManager", function () {
       await token.mint(await vestingManager.getAddress(), amount);
       await expect(
         vestingManager.connect(owner).revokeSchedule(scheduleId)
-      ).to.be.revertedWithCustomError(vestingManager, "ScheduleRevokeed");
+      ).to.be.revertedWithCustomError(vestingManager, "ScheduledRevoked");
     });
   });
 

@@ -33,6 +33,15 @@ contract TokenVault is
     address public vestingManagerAddress;
     address[] private _managers;
 
+     // Allocation counter
+    uint256 private _allocationCounter;
+    uint256 private _airdropCounter;
+
+
+    
+    // Storage gap for future upgrades
+    uint256[50] private __gap;
+
     // Events
     event AllocationCreated(
         address indexed beneficiary,
@@ -67,11 +76,15 @@ contract TokenVault is
     error InvalidAddress();
     error CannotRemoveSelf();
     error CannotAddSelf();
+    error AlreadyInitialized();
+    error AlreadyPaused();
+    error NotPaused();
+    error InvalidImplementation();
+    error ImplementationNotContract();
+    error InvalidBeneficiaryInBatch();
+    error DuplicateBeneficiary();
 
-    // Allocation counter
-    uint256 private _allocationCounter;
-    uint256 private _airdropCounter;
-
+   
 
     // Allocation tracking
     struct Allocation {
@@ -102,12 +115,17 @@ contract TokenVault is
      */
     function initialize(address _ttnToken) external initializer {
         if (_ttnToken == address(0)) revert ZeroAddress("token");
+       
+      
+
         __AccessControl_init();
         __UUPSUpgradeable_init();
         __Pausable_init();
         __ReentrancyGuard_init();
 
         ttnToken = ITTNToken(_ttnToken);
+
+        
 
         // Grant admin roles to deployer
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -118,7 +136,7 @@ contract TokenVault is
 
 
     /**
-     * @dev Creates a new allocation and mints tokens
+     * @dev Creates a new allocation and assign tokens
      * @param beneficiary Address to receive the allocation
      * @param amount Amount of tokens to allocate
      * @return allocationId Unique identifier for the allocation
@@ -132,7 +150,7 @@ contract TokenVault is
             !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)
         ) revert NotAuthorized();
         if (beneficiary == address(0)) revert InvalidBeneficiary();
-        if (amount == 0) revert InvalidAmount();
+        if (amount <= 0) revert InvalidAmount();
 
         // Increment allocation counter before creating allocation
         _allocationCounter++;
@@ -192,23 +210,47 @@ contract TokenVault is
         address[] calldata beneficiaries,
         uint256[] calldata amounts
     ) external whenNotPaused nonReentrant returns (uint256) {
+        // Check authorization
         if (
             !hasRole(MANAGER_ROLE, msg.sender) &&
             !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)
         ) revert NotAuthorized();
+
+        // Validate arrays
         if (beneficiaries.length == 0) revert EmptyBeneficiariesList();
-        if (beneficiaries.length != amounts.length)
-            revert ArraysLengthMismatch();
+        if (beneficiaries.length != amounts.length) revert ArraysLengthMismatch();
+
+        // Check for duplicate addresses and validate amounts
+        uint256 totalAmount = 0;
+        uint256 i = 0;
+        while (i < beneficiaries.length) {
+            // Check for zero address
+            if (beneficiaries[i] == address(0)) revert InvalidBeneficiaryInBatch();
+            
+            // Check for zero amount
+            if (amounts[i] == 0) revert InvalidAmountInBatch();
+            
+            // Check for duplicates
+            uint256 j = 0;
+            while (j < i) {
+                if (beneficiaries[i] == beneficiaries[j]) revert DuplicateBeneficiary();
+                j++;
+            }
+            
+            // Safe math for total amount
+            totalAmount += amounts[i];
+            i++;
+        }
+
+        // Check if total amount exceeds max supply
+        if (totalAmount > 1_000_000_000 * 10 ** 18) revert("Total amount exceeds max supply");
 
         // Increment airdrop counter
         _airdropCounter++;
 
         // Process each beneficiary
-        uint256 i = 0;
+        i = 0;
         while (i < beneficiaries.length) {
-            if (beneficiaries[i] == address(0)) revert InvalidBeneficiary();
-            if (amounts[i] == 0) revert InvalidAmountInBatch();
-
             // Create an allocation for each beneficiary
             _allocationCounter++;
 
@@ -263,27 +305,46 @@ contract TokenVault is
 
     /**
      * @dev Pauses vault operations
+     * Can only be called by accounts with DEFAULT_ADMIN_ROLE
+     * @notice Reverts if:
+     * - Caller is not authorized
+     * - Contract is already paused
      */
     function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (paused()) revert AlreadyPaused();
         _pause();
     }
 
     /**
      * @dev Unpauses vault operations
+     * Can only be called by accounts with DEFAULT_ADMIN_ROLE
+     * @notice Reverts if:
+     * - Caller is not authorized
+     * - Contract is not paused
      */
     function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (!paused()) revert NotPaused();
         _unpause();
     }
 
     /**
      * @dev Function that should revert when `msg.sender` is not authorized to upgrade the contract
      * Called by {upgradeTo} and {upgradeToAndCall}
-     *
      * @param newImplementation Address of the new implementation contract
+     * @notice Reverts if:
+     * - Caller is not authorized (doesn't have DEFAULT_ADMIN_ROLE)
+     * - New implementation is zero address
+     * - New implementation is not a contract
      */
     function _authorizeUpgrade(
         address newImplementation
-    ) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
+    ) internal override onlyRole(DEFAULT_ADMIN_ROLE) {
+        // Check for zero address
+        if (newImplementation == address(0)) revert InvalidAddress();
+        
+        // Check if new implementation is a contract
+        if (newImplementation.code.length == 0) revert ImplementationNotContract();
+    }
 
 
 
@@ -319,6 +380,18 @@ contract TokenVault is
         if (manager == msg.sender) revert CannotRemoveSelf();
 
         _revokeRole(MANAGER_ROLE, manager);
+        
+        // Remove manager from _managers array
+        for (uint256 i = 0; i < _managers.length; i++) {
+            if (_managers[i] == manager) {
+                // Replace the element to remove with the last element
+                _managers[i] = _managers[_managers.length - 1];
+                // Remove the last element
+                _managers.pop();
+                break;
+            }
+        }
+        
         emit ManagerRemoved(manager);
     }
 

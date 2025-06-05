@@ -52,6 +52,10 @@ contract VestingManager is Initializable,
     // Mapping from beneficiary to their schedule IDs
     mapping(address => uint256[]) public beneficiarySchedules;
 
+
+    // Storage gap for future upgrades
+    uint256[50] private __gap;
+
     // Events
     event VestingScheduleCreated(
         uint256 indexed scheduleId,
@@ -78,6 +82,28 @@ contract VestingManager is Initializable,
         uint256 amount,
         address indexed unlockInitiator
     );
+    event VestingCreated(
+        address indexed beneficiary,
+        uint256 amount,
+        uint256 vestingId
+    );
+    event VestingRevoked(
+        address indexed beneficiary,
+        uint256 amount,
+        uint256 vestingId
+    );
+    event VestingReleased(
+        address indexed beneficiary,
+        uint256 amount,
+        uint256 vestingId
+    );
+    event VestingManagerSet(address indexed vestingManager);
+    event ManagerRemoved(address indexed manager);
+    event ManagerAssigned(address indexed manager);
+    event ImplementationUpgraded(
+        address indexed previousImplementation,
+        address indexed newImplementation
+    );
 
     // Custom errors
     error ZeroAddress(string param);
@@ -89,11 +115,25 @@ contract VestingManager is Initializable,
     error NotBeneficiary();
     error NoTokensDue();
     error TransferFailed();
-    error ScheduleRevokeed();
+    error ScheduledRevoked();
     error AmountExceedsRemaining();
     error NoTokensToRevoke();
     error NotAuthorized();
     error NotAllocated();
+    error AlreadyInitialized();
+    error InvalidVestingId();
+    error VestingAlreadyRevoked();
+    error EmptyBeneficiariesList();
+    error ArraysLengthMismatch();
+    error InvalidBeneficiary();
+    error InvalidAmountInBatch();
+    error InvalidAddress();
+    error CannotRemoveSelf();
+    error CannotAddSelf();
+    error AlreadyPaused();
+    error NotPaused();
+    error InvalidImplementation();
+    error ImplementationNotContract();
 
     /**
      * @dev Prevents the implementation contract from being initialized
@@ -109,22 +149,29 @@ contract VestingManager is Initializable,
      * @param _ttnToken Address of the TTNToken contract
      * @param _tokenVault Address of the TokenVault contract
      * @param _admin Address of the admin
+     * @notice Can only be called once
      */
     function initialize(address _ttnToken, address _tokenVault, address _admin) external initializer {
-       if (_ttnToken == address(0)) revert ZeroAddress("token");
-       if (_tokenVault == address(0)) revert ZeroAddress("vault");
-       if (_admin == address(0)) revert ZeroAddress("admin");
+
+        // Validate input parameters
+        if (_ttnToken == address(0)) revert ZeroAddress("token");
+        if (_tokenVault == address(0)) revert ZeroAddress("vault");
+        if (_admin == address(0)) revert ZeroAddress("admin");
+
+        // Initialize inherited contracts
         __AccessControl_init();
         __UUPSUpgradeable_init();
         __Pausable_init();
         __ReentrancyGuard_init();
         
+        // Set contract addresses
         ttnToken = ITTNToken(_ttnToken);
         tokenVault = ITokenVault(_tokenVault);
         
         // Grant admin roles to specified admin
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         
+        // Initialize counters
         _vestingScheduleCounter = 0;
     }
 
@@ -247,7 +294,7 @@ contract VestingManager is Initializable,
         if (scheduleId == 0 || scheduleId > _vestingScheduleCounter) revert InvalidScheduleId();
         
         VestingSchedule storage schedule = vestingSchedules[scheduleId];
-        if (schedule.revoked) revert ScheduleRevokeed();
+        if (schedule.revoked) revert ScheduledRevoked();
         if (msg.sender != schedule.beneficiary) revert NotBeneficiary();
         
         uint256 releasableAmount = computeReleasableAmount(scheduleId);
@@ -262,9 +309,8 @@ contract VestingManager is Initializable,
         // Reduce the allocated amount in TokenVault if allocationId is set
         if (schedule.allocationId > 0) {
             (uint256 allocatedAmount, , bool revoked) = tokenVault.getAllocationById(schedule.allocationId);
-            uint256 vestedAmount = schedule.releasedAmount;
-            if (!revoked && allocatedAmount >= vestedAmount) {
-                tokenVault.reduceAllocation(schedule.allocationId, vestedAmount);
+            if (!revoked && allocatedAmount >= releasableAmount) {
+                tokenVault.reduceAllocation(schedule.allocationId, releasableAmount);
             }
         }
 
@@ -296,7 +342,7 @@ contract VestingManager is Initializable,
         if (amount == 0) revert InvalidAmount();
         
         VestingSchedule storage schedule = vestingSchedules[scheduleId];
-        if (schedule.revoked) revert ScheduleRevokeed();
+        if (schedule.revoked) revert ScheduledRevoked();
         
         uint256 remainingAmount = schedule.totalAmount - schedule.releasedAmount;
         if (amount > remainingAmount) revert AmountExceedsRemaining();
@@ -310,9 +356,8 @@ contract VestingManager is Initializable,
         // Reduce the allocated amount in TokenVault if allocationId is set
         if (schedule.allocationId > 0) {
             (uint256 allocatedAmount, , bool revoked) = tokenVault.getAllocationById(schedule.allocationId);
-            uint256 vestedAmount = schedule.releasedAmount;
-            if (!revoked && allocatedAmount >= vestedAmount) {
-                tokenVault.reduceAllocation(schedule.allocationId, vestedAmount);
+            if (!revoked && allocatedAmount >= amount) {
+                tokenVault.reduceAllocation(schedule.allocationId, amount);
             }
         }
         
@@ -324,7 +369,7 @@ contract VestingManager is Initializable,
     /**
      * @dev Revokes a vesting schedule
      * @param scheduleId ID of the vesting schedule to revoke
-     * @return The amount of tokens returned to the vault
+     * @return The amount of assigned tokens revoked.
      */
     function revokeSchedule(uint256 scheduleId) 
         external 
@@ -337,7 +382,7 @@ contract VestingManager is Initializable,
         if (scheduleId == 0 || scheduleId > _vestingScheduleCounter) revert InvalidScheduleId();
         
         VestingSchedule storage schedule = vestingSchedules[scheduleId];
-        if (schedule.revoked) revert ScheduleRevokeed();
+        if (schedule.revoked) revert ScheduledRevoked();
         
         // Calculate unvested amount
         uint256 unvestedAmount = schedule.totalAmount - schedule.releasedAmount;
@@ -444,8 +489,19 @@ contract VestingManager is Initializable,
     /**
      * @dev Function that should revert when `msg.sender` is not authorized to upgrade the contract
      * Called by {upgradeTo} and {upgradeToAndCall}
-     * 
      * @param newImplementation Address of the new implementation contract
+     * @notice Reverts if:
+     * - Caller is not authorized (doesn't have DEFAULT_ADMIN_ROLE)
+     * - New implementation is zero address
+     * - New implementation is not a contract
      */
-    function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
+    function _authorizeUpgrade(
+        address newImplementation
+    ) internal override onlyRole(DEFAULT_ADMIN_ROLE) {
+        // Check for zero address
+        if (newImplementation == address(0)) revert InvalidAddress();
+        
+        // Check if new implementation is a contract
+        if (newImplementation.code.length == 0) revert ImplementationNotContract();
+    }
 }

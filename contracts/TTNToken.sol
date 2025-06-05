@@ -36,10 +36,22 @@ contract TTNToken is
     error CannotTransferToSelf();
     error NotAuthorized();
     error AdminRoleGrantingDisabled();
+    error AlreadyInitialized();
+    error InvalidAmount();
+    error AlreadyPaused();
+    error NotPaused();
+    error NewAdminAlreadyHasRole();
+    error InvalidImplementation();
+    error ImplementationNotContract();
+    
     // Emit
     event DefaultAdminTransferred(
         address indexed previousAdmin,
         address indexed newAdmin
+    );
+    event ImplementationUpgraded(
+        address indexed previousImplementation,
+        address indexed newImplementation
     );
 
     // Max supply of 1 billion tokens
@@ -47,6 +59,10 @@ contract TTNToken is
     
     // Track total tokens minted (not affected by burns)
     uint256 private _totalMinted;
+
+
+    // Storage gap for future upgrades
+    uint256[50] private __gap;
 
     /**
      * @dev Prevents the implementation contract from being initialized
@@ -60,8 +76,10 @@ contract TTNToken is
     /**
      * @dev Initializes the contract replacing the constructor for upgradeable contracts
      * Sets up roles and configures token parameters
+     * @notice Can only be called once
      */
     function initialize() external initializer {
+
         // Initialize ERC20 with name and symbol
         __ERC20_init("TTN", "TTN");
 
@@ -87,17 +105,25 @@ contract TTNToken is
 
     /**
      * @dev Pauses all token transfers
-     * Can only be called by accounts with TOKEN_ADMIN_ROLE
+     * Can only be called by accounts with DEFAULT_ADMIN_ROLE
+     * @notice Reverts if:
+     * - Caller is not authorized
+     * - Contract is already paused
      */
     function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (paused()) revert AlreadyPaused();
         _pause();
     }
 
     /**
      * @dev Unpauses all token transfers
-     * Can only be called by accounts with TOKEN_ADMIN_ROLE
+     * Can only be called by accounts with DEFAULT_ADMIN_ROLE
+     * @notice Reverts if:
+     * - Caller is not authorized
+     * - Contract is not paused
      */
     function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (!paused()) revert NotPaused();
         _unpause();
     }
 
@@ -120,18 +146,30 @@ contract TTNToken is
 
     /**
      * @dev Mints new tokens, respecting the cap
-     * Can only be called by accounts with TOKEN_ADMIN_ROLE
-     *
+     * Can only be called by accounts with DEFAULT_ADMIN_ROLE
      * @param to The address that will receive the minted tokens
      * @param amount The amount of tokens to mint
+     * @notice Reverts if:
+     * - Caller is not authorized
+     * - Recipient is zero address
+     * - Amount is zero
+     * - Minting would exceed max supply
      */
     function mint(
         address to,
         uint256 amount
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (totalSupply() + amount > MAX_SUPPLY) {
+        // Validate input parameters
+        if (to == address(0)) revert InvalidAddress();
+        if (amount == 0) revert InvalidAmount();
+
+        // Check if minting would exceed max supply
+        uint256 newTotalSupply = totalSupply() + amount;
+        if (newTotalSupply > MAX_SUPPLY) {
             revert MaxSupplyExceeded(amount, MAX_SUPPLY - totalSupply());
         }
+
+        // Update total minted amount and mint tokens
         _totalMinted += amount;
         _mint(to, amount);
     }
@@ -139,12 +177,21 @@ contract TTNToken is
     /**
      * @dev Function that should revert when `msg.sender` is not authorized to upgrade the contract
      * Called by {upgradeTo} and {upgradeToAndCall}
-     *
      * @param newImplementation Address of the new implementation contract
+     * @notice Reverts if:
+     * - Caller is not authorized (doesn't have DEFAULT_ADMIN_ROLE)
+     * - New implementation is zero address
+     * - New implementation is not a contract
      */
     function _authorizeUpgrade(
         address newImplementation
-    ) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
+    ) internal override onlyRole(DEFAULT_ADMIN_ROLE) {
+        // Check for zero address
+        if (newImplementation == address(0)) revert InvalidAddress();
+        
+        // Check if new implementation is a contract
+        if (newImplementation.code.length == 0) revert ImplementationNotContract();
+    }
 
     /**
      * @dev Hook that is called before any transfer of tokens
@@ -172,12 +219,19 @@ contract TTNToken is
     function transferTokenAdmin(
         address newAdmin
     ) external {
+        // Check authorization
         if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) revert NotAuthorized();
+        
+        // Validate new admin address
         if (newAdmin == address(0)) revert InvalidAddress();
         if (newAdmin == msg.sender) revert CannotTransferToSelf();
+        if (hasRole(DEFAULT_ADMIN_ROLE, newAdmin)) revert NewAdminAlreadyHasRole();
 
-        _grantRole(DEFAULT_ADMIN_ROLE, newAdmin);
+        // Revoke role from current admin first
         _revokeRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        
+        // Grant role to new admin
+        _grantRole(DEFAULT_ADMIN_ROLE, newAdmin);
 
         emit DefaultAdminTransferred(msg.sender, newAdmin);
     }
