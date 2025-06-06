@@ -36,10 +36,22 @@ contract TTNToken is
     error CannotTransferToSelf();
     error NotAuthorized();
     error AdminRoleGrantingDisabled();
+    error AlreadyInitialized();
+    error InvalidAmount();
+    error AlreadyPaused();
+    error NotPaused();
+    error NewAdminAlreadyHasRole();
+    error InvalidImplementation();
+    error ImplementationNotContract();
+    
     // Emit
     event DefaultAdminTransferred(
         address indexed previousAdmin,
         address indexed newAdmin
+    );
+    event ImplementationUpgraded(
+        address indexed previousImplementation,
+        address indexed newImplementation
     );
 
     // Max supply of 1 billion tokens
@@ -47,6 +59,10 @@ contract TTNToken is
     
     // Track total tokens minted (not affected by burns)
     uint256 private _totalMinted;
+
+
+    // Storage gap for future upgrades
+    uint256[50] private __gap;
 
     /**
      * @dev Prevents the implementation contract from being initialized
@@ -60,8 +76,10 @@ contract TTNToken is
     /**
      * @dev Initializes the contract replacing the constructor for upgradeable contracts
      * Sets up roles and configures token parameters
+     * @notice Can only be called once
      */
     function initialize() external initializer {
+
         // Initialize ERC20 with name and symbol
         __ERC20_init("TTN", "TTN");
 

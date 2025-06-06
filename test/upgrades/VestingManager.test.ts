@@ -42,7 +42,10 @@ describe("VestingManager Upgrades", function () {
     );
     await vestingManager.waitForDeployment();
 
-    // Grant DEFAULT_ADMIN_ROLE to owner
+    // Grant roles
+    const MINTER_ROLE = ethers.keccak256(ethers.toUtf8Bytes("MINTER_ROLE"));
+    await token.grantRole(MINTER_ROLE, await vault.getAddress());
+    await token.grantRole(MINTER_ROLE, await vestingManager.getAddress());
     await vestingManager.grantRole(DEFAULT_ADMIN_ROLE, owner.address);
 
     return {vestingManager, vault, token, owner, upgrader, vestingAdmin, beneficiary, user };

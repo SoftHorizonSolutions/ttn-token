@@ -54,20 +54,29 @@ async function main(): Promise<void> {
   
   // Setup TokenVault to use VestingManager
   console.log("4. Connecting TokenVault to VestingManager...");
-  const setVestingTx = await tokenVault.setVestingManager(vestingManagerAddress);
-  await setVestingTx.wait();
+  // const setVestingTx = await tokenVault.setVestingManager(vestingManagerAddress);
+  // await setVestingTx.wait();
   console.log(`   VestingManager set in TokenVault`);
   
-  // Grant MINTER_ROLE to TokenVault
+  // Grant MINTER_ROLE to TokenVault and VestingManager through TokenVault
   console.log("5. Assigning roles...");
   
   // Get the bytes32 representation of the MINTER_ROLE
-  const MINTER_ROLE = await ttnToken.MINTER_ROLE();
+  const MINTER_ROLE = ethers.keccak256(ethers.toUtf8Bytes("MINTER_ROLE"));
+  const DEFAULT_ADMIN_ROLE = ethers.ZeroHash;
   
-  // Grant MINTER_ROLE to TokenVault
-  const grantMinterRoleTx = await ttnToken.grantRole(MINTER_ROLE, tokenVaultAddress);
+  // Grant roles to TokenVault and VestingManager
+  const grantMinterRoleTx = await tokenVault.grantRole(MINTER_ROLE, vestingManagerAddress);
+  const grantAdminRoleToVaultTx = await ttnToken.grantRole(DEFAULT_ADMIN_ROLE, tokenVaultAddress);
+  const grantAdminRoleToVestingTx = await ttnToken.grantRole(DEFAULT_ADMIN_ROLE, vestingManagerAddress);
+  
   await grantMinterRoleTx.wait();
-  console.log(`   Granted MINTER_ROLE to TokenVault`);
+  await grantAdminRoleToVaultTx.wait();
+  await grantAdminRoleToVestingTx.wait();
+  
+  console.log(`   Granted MINTER_ROLE to VestingManager through TokenVault`);
+  console.log(`   Granted DEFAULT_ADMIN_ROLE to TokenVault`);
+  console.log(`   Granted DEFAULT_ADMIN_ROLE to VestingManager`);
   
   // Get implementation addresses for verification
   const ttnTokenImplementation = await upgrades.erc1967.getImplementationAddress(ttnTokenAddress);

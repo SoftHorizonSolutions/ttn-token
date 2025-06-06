@@ -8,6 +8,7 @@ describe("VestingManager", function () {
   // Role identifiers
   const VESTING_ADMIN_ROLE = ethers.keccak256(ethers.toUtf8Bytes("VESTING_ADMIN_ROLE"));
   const MANUAL_UNLOCK_ROLE = ethers.keccak256(ethers.toUtf8Bytes("MANUAL_UNLOCK_ROLE"));
+  const DEFAULT_ADMIN_ROLE = ethers.ZeroHash;
 
   
   // Test accounts
@@ -45,12 +46,9 @@ describe("VestingManager", function () {
 
     // Grant roles
     const MINTER_ROLE = ethers.keccak256(ethers.toUtf8Bytes("MINTER_ROLE"));
-    await token.grantRole(MINTER_ROLE, await vault.getAddress());
+    await token.grantRole(DEFAULT_ADMIN_ROLE, await vestingManager.getAddress());
     await vestingManager.grantRole(VESTING_ADMIN_ROLE, owner.address);
     await vestingManager.grantRole(MANUAL_UNLOCK_ROLE, owner.address);
-
-    // grant vesting manager a minter role
-    await token.grantRole(MINTER_ROLE, await vestingManager.getAddress());
 
     return { token, vault, vestingManager, owner, vestingAdmin, manualUnlocker, beneficiary, user };
   }
@@ -260,11 +258,6 @@ describe("VestingManager", function () {
     });
 
     it("Should allow a manual unlock", async function () {
-      // First mint tokens to the vesting manager
-      const MINTER_ROLE = ethers.keccak256(ethers.toUtf8Bytes("MINTER_ROLE"));
-      await token.grantRole(MINTER_ROLE, await vestingManager.getAddress());
-      await token.mint(await vestingManager.getAddress(), amount);
-
       const unlockAmount = ethers.parseEther("100");
       await vestingManager.connect(owner).manualUnlock(scheduleId, unlockAmount);
       
@@ -331,7 +324,7 @@ describe("VestingManager", function () {
       await token.mint(await vestingManager.getAddress(), amount);
       await expect(
         vestingManager.connect(owner).revokeSchedule(scheduleId)
-      ).to.be.revertedWithCustomError(vestingManager, "ScheduleRevokeed");
+      ).to.be.revertedWithCustomError(vestingManager, "ScheduledRevoked");
     });
   });
 

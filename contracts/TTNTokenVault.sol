@@ -33,6 +33,15 @@ contract TokenVault is
     address public vestingManagerAddress;
     address[] private _managers;
 
+     // Allocation counter
+    uint256 private _allocationCounter;
+    uint256 private _airdropCounter;
+
+
+    
+    // Storage gap for future upgrades
+    uint256[50] private __gap;
+
     // Events
     event AllocationCreated(
         address indexed beneficiary,
@@ -67,11 +76,16 @@ contract TokenVault is
     error InvalidAddress();
     error CannotRemoveSelf();
     error CannotAddSelf();
+    error AlreadyInitialized();
+    error AlreadyPaused();
+    error NotPaused();
+    error InvalidImplementation();
+    error ImplementationNotContract();
+    error InvalidBeneficiaryInBatch();
+    error DuplicateBeneficiary();
+    error TransferFailed();
 
-    // Allocation counter
-    uint256 private _allocationCounter;
-    uint256 private _airdropCounter;
-
+   
 
     // Allocation tracking
     struct Allocation {
@@ -102,12 +116,17 @@ contract TokenVault is
      */
     function initialize(address _ttnToken) external initializer {
         if (_ttnToken == address(0)) revert ZeroAddress("token");
+       
+      
+
         __AccessControl_init();
         __UUPSUpgradeable_init();
         __Pausable_init();
         __ReentrancyGuard_init();
 
         ttnToken = ITTNToken(_ttnToken);
+
+        
 
         // Grant admin roles to deployer
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -118,7 +137,7 @@ contract TokenVault is
 
 
     /**
-     * @dev Creates a new allocation and mints tokens
+     * @dev Creates a new allocation and assign tokens
      * @param beneficiary Address to receive the allocation
      * @param amount Amount of tokens to allocate
      * @return allocationId Unique identifier for the allocation
@@ -132,7 +151,7 @@ contract TokenVault is
             !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)
         ) revert NotAuthorized();
         if (beneficiary == address(0)) revert InvalidBeneficiary();
-        if (amount == 0) revert InvalidAmount();
+        if (amount <= 0) revert InvalidAmount();
 
         // Increment allocation counter before creating allocation
         _allocationCounter++;
@@ -233,6 +252,7 @@ contract TokenVault is
         return _airdropCounter;
     }
 
+
     /**
      * @dev Returns all allocations for a beneficiary
      * @param beneficiary Address to check allocations for
@@ -286,7 +306,6 @@ contract TokenVault is
     ) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 
 
-
     /**
      * @dev Adds a new manager
      * @param newManager Address of the new manager
@@ -319,6 +338,18 @@ contract TokenVault is
         if (manager == msg.sender) revert CannotRemoveSelf();
 
         _revokeRole(MANAGER_ROLE, manager);
+        
+        // Remove manager from _managers array
+        for (uint256 i = 0; i < _managers.length; i++) {
+            if (_managers[i] == manager) {
+                // Replace the element to remove with the last element
+                _managers[i] = _managers[_managers.length - 1];
+                // Remove the last element
+                _managers.pop();
+                break;
+            }
+        }
+        
         emit ManagerRemoved(manager);
     }
 

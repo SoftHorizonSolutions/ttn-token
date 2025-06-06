@@ -391,6 +391,44 @@ describe("TokenVault", function () {
         expect(balance).to.be.gte(ethers.parseEther("50")); // balance grows each time
       }
     });
+
+    it("Should properly remove manager from both role and managers array", async function () {
+      // Add multiple managers first
+      await vault.connect(owner).addManager(manager1.address);
+      await vault.connect(owner).addManager(manager2.address);
+      await vault.connect(owner).addManager(user.address);
+
+      // Verify initial state
+      const initialManagers = await vault.getAllManagers();
+      expect(initialManagers).to.include(manager1.address);
+      expect(initialManagers).to.include(manager2.address);
+      expect(initialManagers).to.include(user.address);
+      expect(initialManagers.length).to.equal(3);
+
+      // Remove manager1
+      await vault.connect(owner).removeManager(manager1.address);
+
+      // Verify manager1 is removed from both role and array
+      expect(await vault.hasRole(await vault.MANAGER_ROLE(), manager1.address)).to.be.false;
+      
+      const remainingManagers = await vault.getAllManagers();
+      expect(remainingManagers).to.not.include(manager1.address);
+      expect(remainingManagers).to.include(manager2.address);
+      expect(remainingManagers).to.include(user.address);
+      expect(remainingManagers.length).to.equal(2);
+
+      // Remove manager2
+      await vault.connect(owner).removeManager(manager2.address);
+
+      // Verify manager2 is removed from both role and array
+      expect(await vault.hasRole(await vault.MANAGER_ROLE(), manager2.address)).to.be.false;
+      
+      const finalManagers = await vault.getAllManagers();
+      expect(finalManagers).to.not.include(manager1.address);
+      expect(finalManagers).to.not.include(manager2.address);
+      expect(finalManagers).to.include(user.address);
+      expect(finalManagers.length).to.equal(1);
+    });
   });
 
   describe("reduceAllocation", function () {
