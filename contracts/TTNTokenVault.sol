@@ -83,6 +83,7 @@ contract TokenVault is
     error ImplementationNotContract();
     error InvalidBeneficiaryInBatch();
     error DuplicateBeneficiary();
+    error TransferFailed();
 
    
 
@@ -282,47 +283,27 @@ contract TokenVault is
 
     /**
      * @dev Pauses vault operations
-     * Can only be called by accounts with DEFAULT_ADMIN_ROLE
-     * @notice Reverts if:
-     * - Caller is not authorized
-     * - Contract is already paused
      */
     function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (paused()) revert AlreadyPaused();
         _pause();
     }
 
     /**
      * @dev Unpauses vault operations
-     * Can only be called by accounts with DEFAULT_ADMIN_ROLE
-     * @notice Reverts if:
-     * - Caller is not authorized
-     * - Contract is not paused
      */
     function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (!paused()) revert NotPaused();
         _unpause();
     }
 
     /**
      * @dev Function that should revert when `msg.sender` is not authorized to upgrade the contract
      * Called by {upgradeTo} and {upgradeToAndCall}
+     *
      * @param newImplementation Address of the new implementation contract
-     * @notice Reverts if:
-     * - Caller is not authorized (doesn't have DEFAULT_ADMIN_ROLE)
-     * - New implementation is zero address
-     * - New implementation is not a contract
      */
     function _authorizeUpgrade(
         address newImplementation
-    ) internal override onlyRole(DEFAULT_ADMIN_ROLE) {
-        // Check for zero address
-        if (newImplementation == address(0)) revert InvalidAddress();
-        
-        // Check if new implementation is a contract
-        if (newImplementation.code.length == 0) revert ImplementationNotContract();
-    }
-
+    ) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 
 
     /**

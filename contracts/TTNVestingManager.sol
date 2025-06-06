@@ -303,8 +303,10 @@ contract VestingManager is Initializable,
         // Update released amount
         schedule.releasedAmount += releasableAmount;
         
-        // Transfer tokens to beneficiary
-        if (!ttnToken.transfer(schedule.beneficiary, releasableAmount)) revert TransferFailed();
+    
+        
+        // Mint tokens to beneficiary
+        ttnToken.mint(schedule.beneficiary, releasableAmount);
         
         // Reduce the allocated amount in TokenVault if allocationId is set
         if (schedule.allocationId > 0) {
@@ -350,8 +352,8 @@ contract VestingManager is Initializable,
         // Update released amount
         schedule.releasedAmount += amount;
         
-        // Transfer tokens to beneficiary
-        if (!ttnToken.transfer(schedule.beneficiary, amount)) revert TransferFailed();
+        // Mint tokens to beneficiary
+        ttnToken.mint(schedule.beneficiary, amount);
 
         // Reduce the allocated amount in TokenVault if allocationId is set
         if (schedule.allocationId > 0) {
@@ -489,19 +491,8 @@ contract VestingManager is Initializable,
     /**
      * @dev Function that should revert when `msg.sender` is not authorized to upgrade the contract
      * Called by {upgradeTo} and {upgradeToAndCall}
+     * 
      * @param newImplementation Address of the new implementation contract
-     * @notice Reverts if:
-     * - Caller is not authorized (doesn't have DEFAULT_ADMIN_ROLE)
-     * - New implementation is zero address
-     * - New implementation is not a contract
      */
-    function _authorizeUpgrade(
-        address newImplementation
-    ) internal override onlyRole(DEFAULT_ADMIN_ROLE) {
-        // Check for zero address
-        if (newImplementation == address(0)) revert InvalidAddress();
-        
-        // Check if new implementation is a contract
-        if (newImplementation.code.length == 0) revert ImplementationNotContract();
-    }
+    function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 }
