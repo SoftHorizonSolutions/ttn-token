@@ -58,7 +58,7 @@ contract TokenVault is
         uint256[] amounts,
         uint256 airdropId
     );
-    event VestingManagerSet(address indexed vestingManager);
+   
     event ManagerRemoved(address indexed manager);
     event ManagerAssigned(address indexed manager);
 
@@ -76,11 +76,6 @@ contract TokenVault is
     error InvalidAddress();
     error CannotRemoveSelf();
     error CannotAddSelf();
-    error AlreadyInitialized();
-    error AlreadyPaused();
-    error NotPaused();
-    error InvalidImplementation();
-    error ImplementationNotContract();
     error InvalidBeneficiaryInBatch();
     error DuplicateBeneficiary();
     error TransferFailed();
