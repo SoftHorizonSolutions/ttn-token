@@ -93,9 +93,9 @@ function setVestingManager(address _vestingManager) external
 ```
 - Sets vesting manager address
 - Controls token distribution flow
-- Emits `VestingManagerSet` event
 
-2. **Pause Control**
+
+1. **Pause Control**
 ```solidity
 function pause() external
 function unpause() external
@@ -116,10 +116,7 @@ event AllocationRevoked(address indexed beneficiary, uint256 amount, uint256 all
 event AirdropExecuted(address[] beneficiaries, uint256[] amounts, uint256 airdropId)
 ```
 
-3. **System Events**
-```solidity
-event VestingManagerSet(address indexed vestingManager)
-```
+
 
 ## Error Handling
 

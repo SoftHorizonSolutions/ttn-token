@@ -36,23 +36,14 @@ contract TTNToken is
     error CannotTransferToSelf();
     error NotAuthorized();
     error AdminRoleGrantingDisabled();
-    error AlreadyInitialized();
     error InvalidAmount();
-    error AlreadyPaused();
-    error NotPaused();
-    error NewAdminAlreadyHasRole();
-    error InvalidImplementation();
-    error ImplementationNotContract();
     
     // Emit
     event DefaultAdminTransferred(
         address indexed previousAdmin,
         address indexed newAdmin
     );
-    event ImplementationUpgraded(
-        address indexed previousImplementation,
-        address indexed newImplementation
-    );
+    
 
     // Max supply of 1 billion tokens
     uint256 public constant MAX_SUPPLY = 1_000_000_000 * 10 ** 18;

@@ -82,29 +82,11 @@ contract VestingManager is Initializable,
         uint256 amount,
         address indexed unlockInitiator
     );
-    event VestingCreated(
-        address indexed beneficiary,
-        uint256 amount,
-        uint256 vestingId
-    );
-    event VestingRevoked(
-        address indexed beneficiary,
-        uint256 amount,
-        uint256 vestingId
-    );
-    event VestingReleased(
-        address indexed beneficiary,
-        uint256 amount,
-        uint256 vestingId
-    );
-    event VestingManagerSet(address indexed vestingManager);
-    event ManagerRemoved(address indexed manager);
-    event ManagerAssigned(address indexed manager);
-    event ImplementationUpgraded(
-        address indexed previousImplementation,
-        address indexed newImplementation
-    );
 
+   
+    
+    event ManagerAssigned(address indexed manager);
+    
     // Custom errors
     error ZeroAddress(string param);
     error InvalidAmount();
@@ -120,7 +102,6 @@ contract VestingManager is Initializable,
     error NoTokensToRevoke();
     error NotAuthorized();
     error NotAllocated();
-    error AlreadyInitialized();
     error InvalidVestingId();
     error VestingAlreadyRevoked();
     error EmptyBeneficiariesList();
@@ -130,10 +111,6 @@ contract VestingManager is Initializable,
     error InvalidAddress();
     error CannotRemoveSelf();
     error CannotAddSelf();
-    error AlreadyPaused();
-    error NotPaused();
-    error InvalidImplementation();
-    error ImplementationNotContract();
 
     /**
      * @dev Prevents the implementation contract from being initialized
