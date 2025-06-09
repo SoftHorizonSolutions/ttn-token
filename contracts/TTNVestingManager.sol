@@ -30,6 +30,10 @@ contract VestingManager is Initializable,
     ITTNToken public ttnToken;
     ITokenVault public tokenVault;
 
+    // Tracking total vested and claimed tokens
+    uint256 private _totalVestedTokens;
+    uint256 private _totalClaimedTokens;
+
     // Vesting schedule structure
     struct VestingSchedule {
         uint256 totalAmount;
@@ -82,8 +86,7 @@ contract VestingManager is Initializable,
         uint256 amount,
         address indexed unlockInitiator
     );
-
-   
+    event VestedTokensUpdated(uint256 totalVested, uint256 totalClaimed);
     
     event ManagerAssigned(address indexed manager);
     
@@ -212,6 +215,9 @@ contract VestingManager is Initializable,
         // Add schedule ID to beneficiary's list
         beneficiarySchedules[beneficiary].push(_vestingScheduleCounter);
         
+        // Update total vested tokens
+        _totalVestedTokens += totalAmount;
+        
         emit VestingScheduleCreated(
             _vestingScheduleCounter,
             beneficiary,
@@ -280,7 +286,8 @@ contract VestingManager is Initializable,
         // Update released amount
         schedule.releasedAmount += releasableAmount;
         
-    
+        // Update total claimed tokens
+        _totalClaimedTokens += releasableAmount;
         
         // Mint tokens to beneficiary
         ttnToken.mint(schedule.beneficiary, releasableAmount);
@@ -299,6 +306,7 @@ contract VestingManager is Initializable,
         }
         
         emit TokensReleased(scheduleId, schedule.beneficiary, releasableAmount);
+        emit VestedTokensUpdated(_totalVestedTokens, _totalClaimedTokens);
         
         return releasableAmount;
     }
@@ -329,6 +337,9 @@ contract VestingManager is Initializable,
         // Update released amount
         schedule.releasedAmount += amount;
         
+        // Update total claimed tokens
+        _totalClaimedTokens += amount;
+        
         // Mint tokens to beneficiary
         ttnToken.mint(schedule.beneficiary, amount);
 
@@ -341,6 +352,7 @@ contract VestingManager is Initializable,
         }
         
         emit ManualUnlock(scheduleId, schedule.beneficiary, amount, msg.sender);
+        emit VestedTokensUpdated(_totalVestedTokens, _totalClaimedTokens);
         
         return true;
     }
@@ -372,12 +384,16 @@ contract VestingManager is Initializable,
         // Mark schedule as revoked
         schedule.revoked = true;
         
+        // Update total vested tokens
+        _totalVestedTokens -= unvestedAmount;
+        
         // Revoke allocation in TokenVault if allocationId is set
         if (schedule.allocationId > 0) {
             tokenVault.revokeAllocation(schedule.allocationId);
         }
         
         emit ScheduleRevoked(scheduleId, schedule.beneficiary, unvestedAmount);
+        emit VestedTokensUpdated(_totalVestedTokens, _totalClaimedTokens);
         
         return unvestedAmount;
     }
@@ -472,4 +488,21 @@ contract VestingManager is Initializable,
      * @param newImplementation Address of the new implementation contract
      */
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
+
+    /**
+     * @dev Returns the total amount of tokens that have been vested
+     * @return totalVested Total amount of tokens that have been vested
+     */
+    function getVestingToken() external view returns (uint256 totalVested) {
+        return _totalVestedTokens;
+    }
+
+
+    /**
+     * @dev Returns the total amount of tokens that have been claimed
+     * @return totalClaimed Total amount of tokens that have been claimed
+     */
+    function getClaimedTokens() external view returns (uint256 totalClaimed) {
+        return  _totalClaimedTokens;
+    }
 }
