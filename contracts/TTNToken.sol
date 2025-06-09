@@ -119,6 +119,14 @@ contract TTNToken is
     }
 
     /**
+     * @dev Returns the amount of tokens that can still be minted
+     * @return The remaining amount of tokens that can be minted
+     */
+    function getRemainingMintableTokens() external view returns (uint256) {
+        return MAX_SUPPLY - _totalMinted;
+    }
+
+    /**
      * @dev Returns the token balance of a specific wallet
      * @param walletAddress The address to check the balance for
      * @return The token balance of the specified wallet
