@@ -442,7 +442,7 @@ describe("VestingManager", function () {
 
     it("Should track total vested tokens correctly", async function () {
       // Check initial vested amount
-      expect(await vestingManager.getVestingToken()).to.equal(amount);
+      expect(await vestingManager.getVestedToken()).to.equal(amount);
 
       // Create another allocation and vesting schedule
       const secondAllocationAmount = ethers.parseEther("2000");
@@ -462,7 +462,7 @@ describe("VestingManager", function () {
       );
 
       // Check total vested amount after second schedule
-      expect(await vestingManager.getVestingToken()).to.equal(amount + secondAmount);
+      expect(await vestingManager.getVestedToken()).to.equal(amount + secondAmount);
     });
 
     it("Should track claimed tokens correctly", async function () {
@@ -497,7 +497,7 @@ describe("VestingManager", function () {
       await vestingManager.connect(owner).revokeSchedule(scheduleId);
 
       // Check that vested amount is reduced but claimed amount remains
-      expect(await vestingManager.getVestingToken()).to.equal(claimedBeforeRevoke);
+      expect(await vestingManager.getVestedToken()).to.equal(claimedBeforeRevoke);
       expect(await vestingManager.getClaimedTokens()).to.equal(claimedBeforeRevoke);
     });
 
@@ -523,7 +523,7 @@ describe("VestingManager", function () {
       await time.increaseTo(Math.floor(Date.now() / 1000) + 3600 * 24 * 31);
 
       // Check initial amounts
-      expect(await vestingManager.getVestingToken()).to.equal(amount + secondAmount);
+      expect(await vestingManager.getVestedToken()).to.equal(amount + secondAmount);
       expect(await vestingManager.getClaimedTokens()).to.equal(0);
 
       // Claim from first schedule
@@ -535,7 +535,7 @@ describe("VestingManager", function () {
       await vestingManager.connect(owner).manualUnlock(2, unlockAmount);
 
       // Check final amounts
-      expect(await vestingManager.getVestingToken()).to.equal(amount + secondAmount);
+      expect(await vestingManager.getVestedToken()).to.equal(amount + secondAmount);
       expect(await vestingManager.getClaimedTokens()).to.equal(claimedAfterFirst + unlockAmount);
     });
   });

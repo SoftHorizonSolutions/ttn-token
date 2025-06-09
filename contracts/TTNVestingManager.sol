@@ -493,7 +493,7 @@ contract VestingManager is Initializable,
      * @dev Returns the total amount of tokens that have been vested
      * @return totalVested Total amount of tokens that have been vested
      */
-    function getVestingToken() external view returns (uint256 totalVested) {
+    function getVestedToken() external view returns (uint256 totalVested) {
         return _totalVestedTokens;
     }
 

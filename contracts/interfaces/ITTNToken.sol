@@ -7,6 +7,4 @@ interface ITTNToken {
     function getTotalMinted() external view returns (uint256);
     function getRemainingMintableTokens() external view returns (uint256);
     function getTokenBalance(address walletAddress) external view returns (uint256);
-    function getVestingToken() external view returns (uint256);
-    function getClaimedTokens() external view returns (uint256);
 } 
