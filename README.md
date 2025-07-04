@@ -1,155 +1,247 @@
-# TTN Token System
+## TTN Token System - Deployment & Interaction Guide
 
-This project implements a comprehensive token system for the TTN ecosystem on the Base network with a 3-contract architecture:
+This project uses both **Foundry** and **Hardhat** for smart contract development, deployment, and verification.
 
-1. **TTNToken** - Core ERC20 Token contract
-2. **TTNTokenVault** - Token Treasury & Allocation Manager
-3. **TTNVestingManager** - Vesting, Locking, and Claiming
+---
+
+## Prerequisites
+- Node.js & npm
+- [Foundry](https://book.getfoundry.sh/getting-started/installation.html) (`curl -L https://foundry.paradigm.xyz | bash && foundryup`)
+- [Hardhat](https://hardhat.org/getting-started/) (`npm install`)
+
+---
+## Contracts
+- The TTN token system implements the following features:
+ **3-Contract Architecture**:
+  - **TTNToken**: Core ERC20 with minting, burning, pausing, and upgradeability
+  - **TTNTokenVault**: Manages token allocations, airdrops, and minting control
+  - **TTNVestingManager**: Handles vesting schedules, locking, unlocking, and claims
 
 ## Project Structure
-
-```
 ttn-token/
 ├── contracts/         # Smart contract source files
 │   ├── TTNToken.sol        # Core ERC20 Token
 │   ├── TTNTokenVault.sol      # Treasury & Allocation Manager
 │   └── TTNVestingManager.sol  # Vesting & Locking Manager
-├── scripts/           # Deployment and upgrade scripts
+├── scripts/           # Deployment and upgrade scripts for hardhat - Not advisable
+├── script/            # Deployment scripts for foundary - Advisable **use this**
 ├── deployments/       # Deployment artifacts
 ├── .env.example       # Example environment configuration
 ├── test               # Test files
 ├── hardhat.config.ts  # Hardhat configuration
 └── README.md          # Project documentation
+
+## Environment Setup
+
+### Option 1: Interactive Private Key (Recommended)
+Foundry will securely prompt for your private key during deployment. This method is safe and doesn't store the private key in shell history.
+
+### Option 2: Environment Variables
+Create a `.env` file in the project root with the following (replace values as needed):
+
 ```
 
-## Key Features
+**Security Note:** If using environment variables, ensure `.env` is in your `.gitignore` to prevent accidentally committing private keys.
 
-The TTN token system implements the following features:
+---
 
-- **3-Contract Architecture**:
-  - **TTNToken**: Core ERC20 with minting, burning, pausing, and upgradeability
-  - **TTNTokenVault**: Manages token allocations, airdrops, and minting control
-  - **TTNVestingManager**: Handles vesting schedules, locking, unlocking, and claims
-
-- **Upgradeable Architecture**: All contracts use the UUPS (Universal Upgradeable Proxy Standard) pattern for future upgrades
-
-- **On-Demand Minting with Hard Cap**: Maximum supply is capped at 1 billion tokens, minted only as needed for allocations
-
-- **Flexible Vesting and Locking**: Custom unlock patterns including cliff periods, linear releases, and milestone-based unlocks
-
-- **Airdrop Functionality**: Batch-allocate tokens to multiple addresses for airdrops.
-
-- **Manual Unlocking**: Perform early unlocks when needed (e.g., exchange listings).
-
-- **Allocation Revocation**: Revoke part or all of locked allocations when needed
-
-- **On-Chain Visibility**: Transparent vesting schedules with query functions for beneficiaries
-
-- **Emergency Controls**: Pause transfers, vault operations, and vesting claims in case of security issues
-
-## Pre-requisites
-
-- Node.js v18+
-- npm or yarn
-- A wallet with ETH/BASE for contract deployment
-
-## Setup
-
-1. Clone the repository:
-```shell
-git clone https://github.com/spikeyrock/ttn-token.git
-cd ttn-token
-```
-
-2. Install dependencies:
-```shell
-npm install
-```
-
-3. Create a `.env` file based on `.env.example`:
-```shell
-cp .env.example .env
-```
-
-4. Configure your `.env` file with:
-   - Your wallet's private key
-   - RPC URLs
-   - Etherscan API key for verification
-
-## Compilation
-
-Compile the smart contracts:
-
-```shell
-npx hardhat compile
-```
-
-## Testing
+## Testing with  hardhat
+## Additional Foundry Commands
 
 Run tests to verify contract functionality:
+- **Build:** `forge build`
+- **Test:** `forge test`
+- **Format:** `forge fmt`
+- **Anvil (local node):** `anvil`
+- **Help:** `forge --help`
 
-```shell
-npm test
+
+## Build Contracts for foudary deployment
+
+```sh
+forge build
 ```
 
-## Deployment
+---
 
-Deploy the complete token system to Base Goerli testnet:
+## Deploy Contracts
 
-```shell
-npm run deploy
+### Base Sepolia Testnet
+
+This will deploy all contracts and verify them on BaseScan Sepolia testnet:
+
+```sh
+forge script script/Deploy.s.sol:DeployScript \
+  --rpc-url https://sepolia.base.org \
+  --broadcast \
+  --verify \
+  --etherscan-api-key <BASESCAN_API_KEY> \
+  --chain 84532 \
+  --private-key <PRIVATE_KEY>
 ```
 
-After deployment:
-1. Save the proxy addresses in your `.env` file for future upgrades
-2. Verify the implementation contracts on Basescan
+### Base Mainnet
 
-## Upgrading
+This will deploy all contracts and verify them on BaseScan mainnet:
 
-To upgrade contract implementations:
-
-1. Make changes to the contract(s) you want to upgrade
-2. Update your `.env` file with the proxy addresses
-3. Run the upgrade script, specifying which contract to upgrade:
-
-```shell
-# Upgrade a specific contract (token, vault, or vesting)
-npm run upgrade -- token
-npm run upgrade -- vault
-npm run upgrade -- vesting
-
-# Or upgrade all contracts
-npm run upgrade -- all
+```sh
+forge script script/Deploy.s.sol:DeployScript \
+  --rpc-url https://mainnet.base.org \
+  --broadcast \
+  --verify \
+  --etherscan-api-key <BASESCAN_API_KEY> \
+  --chain 8453 \
+  --private-key <PRIVATE_KEY>
 ```
 
-## Contract Verification
+**Note:** The script will print all implementation and proxy addresses. Copy these to your `.env` file for future use.
 
-Verify your contracts on Basescan (after deployment):
+---
+## Verification (Automatic)
+- Contract verification is handled automatically during deployment with the `--verify` flag.
+- You can check verification status on [BaseScan Sepolia](https://sepolia.basescan.org/).
+- You can check verification status on [BaseScan Mainnet](https://basescan.org/).
 
-```shell
-# Get all implementation addresses and verification commands
-npx hardhat run scripts/verify.ts --network base_goerli
+---
 
-# Then run the verification command for each implementation
-npx hardhat verify --network base_goerli IMPLEMENTATION_ADDRESS
-```
+## Why Foundry for Deployment & Verification?
 
-## Token Lifecycle
+### Foundry Advantages for This Project
 
-1. **Initial Deployment**: Contracts deployed without pre-minting the supply
-2. **Allocation and Vesting**: Tokens minted on-demand through the vault
-3. **Locking**: Allocated tokens locked under specific vesting schedules
-4. **Unlocking and Claiming**: Tokens unlock over time and can be claimed by beneficiaries
-5. **Revocations (if needed)**: Admins can revoke unvested portions if required
-6. **Visibility and Tracking**: Beneficiaries can query their schedules and balances
+#### 🚀 **Performance & Speed**
+- **Faster Compilation:** Rust-based compiler is significantly faster than Solidity compiler
+- **Quick Deployment:** Reduced deployment time on Base Sepolia testnet
+- **Efficient Verification:** Streamlined verification process with built-in support
 
-## Security Considerations
+#### 🔧 **Built-in Features**
+- **Native Proxy Support:** Excellent support for UUPS proxy pattern deployment
+- **Automatic Verification:** One-command deployment and verification
+- **Gas Optimization:** Better gas estimation and optimization tools
+- **Console Logging:** Built-in console.log for debugging deployment scripts
 
-- Admin roles should be managed carefully
-- Consider using multisig wallets for admin operations
-- Test thoroughly before deploying to mainnet
-- Consider a security audit before mainnet deployment
+#### 🛡️ **Security & Reliability**
+- **Type Safety:** Strong typing in deployment scripts reduces errors
+- **Gas Tracking:** Automatic gas usage tracking and optimization
+- **Error Handling:** Better error messages and debugging capabilities
+- **Transaction Management:** Robust transaction handling and retry mechanisms
 
-## License
+#### 📊 **Developer Experience**
+- **Interactive Scripts:** Secure private key prompting without shell history exposure
+- **Broadcast Files:** Automatic transaction recording and replay capabilities
+- **Environment Integration:** Seamless environment variable support
+- **Chain Management:** Native support for multiple networks and RPC endpoints
+  
 
-This project is licensed under the MIT License.
+### Hardhat vs Foundry Comparison
+
+| Feature | Foundry | Hardhat |
+|---------|---------|---------|
+| **Compilation Speed** | ⚡ Very Fast (Rust) | 🐌 Slower (JavaScript) |
+| **Proxy Deployment** | ✅ Native Support | ⚠️ Requires Plugins |
+| **Verification** | ✅ Built-in | ⚠️ Requires Plugins |
+| **Gas Optimization** | ✅ Excellent | ⚠️ Limited |
+| **Type Safety** | ✅ Strong | ⚠️ JavaScript-based |
+| **Console Logging** | ✅ Built-in | ⚠️ Requires Setup |
+| **Transaction Recording** | ✅ Automatic | ❌ Manual Setup |
+
+### Hardhat Compatibility
+- You can still use Hardhat for scripting, upgrades, and TypeScript-based tests.
+- See `scripts/deploy.ts` for a Hardhat deployment example.
+- **Hybrid Approach:** Use Foundry for deployment/verification, Hardhat for complex scripting
+
+---
+
+## Additional Foundry Commands
+
+- **Build:** `forge build`
+- **Test:** `forge test`
+- **Format:** `forge fmt`
+- **Anvil (local node):** `anvil`
+- **Help:** `forge --help`
+
+---
+
+
+## Deployed Contracts on Base Sepolia
+
+### Contract Architecture Overview
+
+This project uses the **UUPS (Universal Upgradeable Proxy Standard)** pattern for upgradeable contracts. This architecture consists of:
+
+- **Implementation Contracts:** The actual contract logic that can be upgraded
+- **Proxy Contracts:** The user-facing contracts that delegate calls to the implementation
+
+### Implementation Contracts (Logic Layer)
+These contain the actual contract logic and can be upgraded without changing user addresses:
+
+- **TTNToken Implementation:** [0x2d28b0e6dffd7155dbf4328681d0de41f099f6a6](https://sepolia.basescan.org/address/0x2d28b0e6dffd7155dbf4328681d0de41f099f6a6)
+  - Contains the ERC20 token logic with custom features
+  - **Upgradeable:** ✅ Can be upgraded to add new features
+  - **Integration:** ❌ Should NOT be integrated directly
+
+- **TokenVault Implementation:** [0xe32ed47c51e68c309133719a848a0988a028a3c4](https://sepolia.basescan.org/address/0xe32ed47c51e68c309133719a848a0988a028a3c4)
+  - Contains vault logic for token distribution and management
+  - **Upgradeable:** ✅ Can be upgraded to modify vault functionality
+  - **Integration:** ❌ Should NOT be integrated directly
+
+- **VestingManager Implementation:** [0x4dbcd8721e025ee11b8b1fa4991da993e202a0b5](https://sepolia.basescan.org/address/0x4dbcd8721e025ee11b8b1fa4991da993e202a0b5)
+  - Contains vesting schedule logic and token release mechanisms
+  - **Upgradeable:** ✅ Can be upgraded to modify vesting rules
+  - **Integration:** ❌ Should NOT be integrated directly
+
+### Proxy Contracts (User Interface)
+These are the contracts that users and applications should interact with:
+
+- **TTNToken Proxy:** [0x794110602acab007732eda2f3aee7dce78bd6256](https://sepolia.basescan.org/address/0x794110602acab007732eda2f3aee7dce78bd6256)
+  - **Integration:** ✅ **USE THIS ADDRESS** for token interactions
+  - **Purpose:** Main TTN token contract for transfers, approvals, etc.
+  - **Upgradeable:** ✅ Will automatically use upgraded implementation
+
+- **TokenVault Proxy:** [0xe72dcaea94829025391ace9cff3053c06731f46b](https://sepolia.basescan.org/address/0xe72dcaea94829025391ace9cff3053c06731f46b)
+  - **Integration:** ✅ **USE THIS ADDRESS** for vault operations
+  - **Purpose:** Token distribution, airdrops, and vault management
+  - **Upgradeable:** ✅ Will automatically use upgraded implementation
+
+- **VestingManager Proxy:** [0x2df41d6e79a76bd4e913ab6dc8b954581ee8e67f](https://sepolia.basescan.org/address/0x2df41d6e79a76bd4e913ab6dc8b954581ee8e67f)
+  - **Integration:** ✅ **USE THIS ADDRESS** for vesting operations
+  - **Purpose:** Create and manage token vesting schedules
+  - **Upgradeable:** ✅ Will automatically use upgraded implementation
+
+### Why UUPS Proxy Pattern?
+- **Upgradeability:** Contract logic can be updated without changing user addresses
+- **Gas Efficiency:** More gas-efficient than traditional proxy patterns
+- **Security:** Implementation contracts are separate from proxy contracts
+- **User Experience:** Users always interact with the same proxy addresses
+
+### Integration Guidelines
+- **✅ Use Proxy Addresses:** Always integrate using the proxy contract addresses
+- **❌ Don't Use Implementation Addresses:** Never integrate directly with implementation contracts
+- **🔗 Consistent Addresses:** Proxy addresses remain the same even after upgrades
+- **📋 ABI Compatibility:** Use the proxy contract ABIs for integration
+
+### Transaction Logging & Events
+
+#### 📝 **Which Contract Logs Transactions?**
+- **Proxy Contracts:** ✅ **Log all user transactions and events**
+- **Implementation Contracts:** ❌ **Do NOT log transactions directly**
+
+#### 🔄 **How Transaction Logging Works**
+1. **User calls Proxy Contract** → Proxy delegates to Implementation
+2. **Implementation executes logic** → Events are emitted from Implementation
+3. **Proxy forwards events** → Events appear as if they came from Proxy address
+4. **Blockchain logs** → All transactions show Proxy contract address
+
+
+#### 🎯 **Why This Matters**
+- **Consistent Address:** All events/tokens show same proxy address
+- **Upgrade Safety:** Events continue working after implementation upgrades
+- **User Experience:** Users always see the same contract address in their wallet
+- **Integration:** Frontends and APIs should listen to proxy contract events
+
+
+---
+
+## References
+- [Foundry Book](https://book.getfoundry.sh/)
+- [Hardhat Docs](https://hardhat.org/getting-started/)
+- [BaseScan Sepolia](https://sepolia.basescan.org/)
