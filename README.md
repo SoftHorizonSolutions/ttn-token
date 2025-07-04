@@ -10,6 +10,26 @@ This project uses both **Foundry** and **Hardhat** for smart contract developmen
 - [Hardhat](https://hardhat.org/getting-started/) (`npm install`)
 
 ---
+## Contracts
+- The TTN token system implements the following features:
+ **3-Contract Architecture**:
+  - **TTNToken**: Core ERC20 with minting, burning, pausing, and upgradeability
+  - **TTNTokenVault**: Manages token allocations, airdrops, and minting control
+  - **TTNVestingManager**: Handles vesting schedules, locking, unlocking, and claims
+
+## Project Structure
+ttn-token/
+├── contracts/         # Smart contract source files
+│   ├── TTNToken.sol        # Core ERC20 Token
+│   ├── TTNTokenVault.sol      # Treasury & Allocation Manager
+│   └── TTNVestingManager.sol  # Vesting & Locking Manager
+├── scripts/           # Deployment and upgrade scripts for hardhat - Not advisable
+├── script/            # Deployment scripts for foundary - Advisable **use this**
+├── deployments/       # Deployment artifacts
+├── .env.example       # Example environment configuration
+├── test               # Test files
+├── hardhat.config.ts  # Hardhat configuration
+└── README.md          # Project documentation
 
 ## Environment Setup
 
@@ -25,7 +45,18 @@ Create a `.env` file in the project root with the following (replace values as n
 
 ---
 
-## Build Contracts
+## Testing with  hardhat
+## Additional Foundry Commands
+
+Run tests to verify contract functionality:
+- **Build:** `forge build`
+- **Test:** `forge test`
+- **Format:** `forge fmt`
+- **Anvil (local node):** `anvil`
+- **Help:** `forge --help`
+
+
+## Build Contracts for foudary deployment
 
 ```sh
 forge build
