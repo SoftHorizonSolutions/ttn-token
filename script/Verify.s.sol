@@ -67,13 +67,13 @@ contract VerifyScript is Script {
         console.log("\n=== Verification Complete ===");
     }
 
-    function verifyContract(address contractAddress, string memory contractPath) external {
+    function verifyContract(address contractAddress, string memory contractPath) external pure  {
         // This would typically call forge verify-contract
         // For now, we'll just log the verification command
         console.log("Would verify contract at", contractAddress, "with path", contractPath);
     }
 
-    function verifyProxy(address proxyAddress, address implementationAddress) external {
+    function verifyProxy(address proxyAddress, address implementationAddress) external pure {
         // This would typically call forge verify-contract for the proxy
         // For now, we'll just log the verification command
         console.log("Would verify proxy at", proxyAddress, "with implementation at", implementationAddress);

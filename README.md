@@ -174,17 +174,17 @@ This project uses the **UUPS (Universal Upgradeable Proxy Standard)** pattern fo
 ### Implementation Contracts (Logic Layer)
 These contain the actual contract logic and can be upgraded without changing user addresses:
 
-- **TTNToken Implementation:** [0x2d28b0e6dffd7155dbf4328681d0de41f099f6a6](https://sepolia.basescan.org/address/0x2d28b0e6dffd7155dbf4328681d0de41f099f6a6)
+- **TTNToken Implementation:** [0x31B3fEf52CDC685b51baC75E913802394fBF7B37](https://sepolia.basescan.org/address/0x31B3fEf52CDC685b51baC75E913802394fBF7B37)
   - Contains the ERC20 token logic with custom features
   - **Upgradeable:** ✅ Can be upgraded to add new features
   - **Integration:** ❌ Should NOT be integrated directly
 
-- **TokenVault Implementation:** [0xe32ed47c51e68c309133719a848a0988a028a3c4](https://sepolia.basescan.org/address/0xe32ed47c51e68c309133719a848a0988a028a3c4)
+- **TokenVault Implementation:** [0xE87257a207D7a09A9CA504e4aa19A0253eF74D22](https://sepolia.basescan.org/address/0xE87257a207D7a09A9CA504e4aa19A0253eF74D22)
   - Contains vault logic for token distribution and management
   - **Upgradeable:** ✅ Can be upgraded to modify vault functionality
   - **Integration:** ❌ Should NOT be integrated directly
 
-- **VestingManager Implementation:** [0x4dbcd8721e025ee11b8b1fa4991da993e202a0b5](https://sepolia.basescan.org/address/0x4dbcd8721e025ee11b8b1fa4991da993e202a0b5)
+- **VestingManager Implementation:** [0xED448C008c75495bBaEFe76C9211BC6C814dc60a](https://sepolia.basescan.org/address/0xED448C008c75495bBaEFe76C9211BC6C814dc60a)
   - Contains vesting schedule logic and token release mechanisms
   - **Upgradeable:** ✅ Can be upgraded to modify vesting rules
   - **Integration:** ❌ Should NOT be integrated directly
@@ -192,17 +192,17 @@ These contain the actual contract logic and can be upgraded without changing use
 ### Proxy Contracts (User Interface)
 These are the contracts that users and applications should interact with:
 
-- **TTNToken Proxy:** [0x794110602acab007732eda2f3aee7dce78bd6256](https://sepolia.basescan.org/address/0x794110602acab007732eda2f3aee7dce78bd6256)
+- **TTNToken Proxy:** [0x2095569DFc22C95Adac4963597ea5a809453684a](https://sepolia.basescan.org/address/0x2095569DFc22C95Adac4963597ea5a809453684a)
   - **Integration:** ✅ **USE THIS ADDRESS** for token interactions
   - **Purpose:** Main TTN token contract for transfers, approvals, etc.
   - **Upgradeable:** ✅ Will automatically use upgraded implementation
 
-- **TokenVault Proxy:** [0xe72dcaea94829025391ace9cff3053c06731f46b](https://sepolia.basescan.org/address/0xe72dcaea94829025391ace9cff3053c06731f46b)
+- **TokenVault Proxy:** [0xe70A378AADe635d6FfcC0BEb6bfA805a632EAc37](https://sepolia.basescan.org/address/0xe70A378AADe635d6FfcC0BEb6bfA805a632EAc37)
   - **Integration:** ✅ **USE THIS ADDRESS** for vault operations
   - **Purpose:** Token distribution, airdrops, and vault management
   - **Upgradeable:** ✅ Will automatically use upgraded implementation
 
-- **VestingManager Proxy:** [0x2df41d6e79a76bd4e913ab6dc8b954581ee8e67f](https://sepolia.basescan.org/address/0x2df41d6e79a76bd4e913ab6dc8b954581ee8e67f)
+- **VestingManager Proxy:** [0xC6411cc842C957E7684459D3BEA005140802895F](https://sepolia.basescan.org/address/0xC6411cc842C957E7684459D3BEA005140802895F)
   - **Integration:** ✅ **USE THIS ADDRESS** for vesting operations
   - **Purpose:** Create and manage token vesting schedules
   - **Upgradeable:** ✅ Will automatically use upgraded implementation

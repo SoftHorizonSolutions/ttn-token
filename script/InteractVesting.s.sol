@@ -93,13 +93,7 @@ contract InteractVestingScript is Script {
         uint256[] memory beneficiarySchedules = vesting.getSchedulesForBeneficiary(testBeneficiary);
         console.log("Schedules for beneficiary:", beneficiarySchedules.length);
         
-        // 7. Check total vested and claimed tokens
-        console.log("=== Vesting Statistics ===");
-        uint256 totalVested = vesting.getVestedToken();
-        uint256 totalClaimed = vesting.getClaimedTokens();
-        console.log("Total Vested Tokens:", totalVested);
-        console.log("Total Claimed Tokens:", totalClaimed);
-        
+       
         vm.stopBroadcast();
         
         console.log("=== Script Completed Successfully ===");
