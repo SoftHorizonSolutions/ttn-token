@@ -4,7 +4,7 @@ pragma solidity ^0.8.28;
 import "forge-std/Script.sol";
 
 contract VerifyScript is Script {
-    function run() external {
+    function run() external view {
         // Get contract addresses from environment variables
         address tokenImpl = vm.envAddress("TTN_TOKEN_IMPL");
         address vaultImpl = vm.envAddress("TOKEN_VAULT_IMPL");

@@ -7,7 +7,7 @@ import "../contracts/TTNTokenVault.sol";
 import "../contracts/TTNVestingManager.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-contract DeployScript is Script {
+contract DeployMultiSigScript is Script {
     function run() external {
         
         vm.startBroadcast();
