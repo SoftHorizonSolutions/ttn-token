@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { VestingManager, TokenVault, TTNToken } from "../../typechain-types";
 
@@ -82,24 +82,32 @@ describe("VestingManager Upgrades", function () {
     });
 
     it("Should preserve state after upgrade", async function () {
-      // Create a vesting schedule before upgrade
+      // First create an allocation in the vault
+      const allocationAmount = ethers.parseEther("2000"); // More than vesting amount
+      const tx = await vault.connect(owner).createAllocation(beneficiary.address, allocationAmount);
+      const receipt = await tx.wait();
+      const event = receipt?.logs[0];
+      const allocationId = event?.topics[3] ? BigInt(event.topics[3]) : BigInt(0);
+
+      // Create a vesting schedule using the allocation
       const amount = ethers.parseEther("1000");
-      const startTime = Math.floor(Date.now() / 1000) + 3600;
+      const currentTime = await time.latest();
+      const startTime = currentTime + 3600 * 24; // 1 day from current block time
       const cliffDuration = 3600 * 24 * 30;
       const duration = 3600 * 24 * 365;
 
-      const tx = await vestingManager.connect(owner).createVestingSchedule(
+      const vestingTx = await vestingManager.connect(owner).createVestingSchedule(
         beneficiary.address,
         amount,
         startTime,
         cliffDuration,
         duration,
-        0
+        allocationId
       );
 
-      const receipt = await tx.wait();
-      const event = receipt?.logs[0];
-      const scheduleId = event?.topics[1] ? BigInt(event.topics[1]) : BigInt(0);
+      const vestingReceipt = await vestingTx.wait();
+      const vestingEvent = vestingReceipt?.logs[0];
+      const scheduleId = vestingEvent?.topics[1] ? BigInt(vestingEvent.topics[1]) : BigInt(0);
 
       // Get V2 contract factory
       const VestingManagerV2 = await ethers.getContractFactory("TTNVestingManagerV2");
