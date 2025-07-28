@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { VestingManager, TTNToken, TokenVault } from "../typechain-types";
 
@@ -405,6 +405,138 @@ describe("VestingManager", function () {
           0
         )
       ).to.be.revertedWithCustomError(vestingManager, "EnforcedPause");
+    });
+  });
+
+  describe("Vesting Token Tracking", function () {
+    const amount = ethers.parseEther("1000");
+    let scheduleId: bigint;
+    let allocationId: bigint;
+
+    beforeEach(async function () {
+      // First create an allocation in the vault
+      const allocationAmount = ethers.parseEther("2000"); // More than vesting amount
+      const tx = await vault.connect(owner).createAllocation(beneficiary.address, allocationAmount);
+      const receipt = await tx.wait();
+      const event = receipt?.logs[0];
+      allocationId = event?.topics[3] ? BigInt(event.topics[3]) : BigInt(0);
+
+      // Create a vesting schedule using the allocation
+      const startTime = Math.floor(Date.now() / 1000) + 3600;
+      const cliffDuration = 3600 * 24 * 30;
+      const duration = 3600 * 24 * 365;
+
+      const vestingTx = await vestingManager.connect(owner).createVestingSchedule(
+        beneficiary.address,
+        amount,
+        startTime,
+        cliffDuration,
+        duration,
+        allocationId
+      );
+
+      const vestingReceipt = await vestingTx.wait();
+      const vestingEvent = vestingReceipt?.logs[0];
+      scheduleId = vestingEvent?.topics[1] ? BigInt(vestingEvent.topics[1]) : BigInt(0);
+    });
+
+    it("Should track total vested tokens correctly", async function () {
+      // Check initial vested amount
+      expect(await vestingManager.getVestedToken()).to.equal(amount);
+
+      // Create another allocation and vesting schedule
+      const secondAllocationAmount = ethers.parseEther("2000");
+      const secondTx = await vault.connect(owner).createAllocation(beneficiary.address, secondAllocationAmount);
+      const secondReceipt = await secondTx.wait();
+      const secondEvent = secondReceipt?.logs[0];
+      const secondAllocationId = secondEvent?.topics[3] ? BigInt(secondEvent.topics[3]) : BigInt(0);
+
+      const secondAmount = ethers.parseEther("1500");
+      const vestingTx = await vestingManager.connect(owner).createVestingSchedule(
+        beneficiary.address,
+        secondAmount,
+        Math.floor(Date.now() / 1000) + 3600,
+        3600 * 24 * 30,
+        3600 * 24 * 365,
+        secondAllocationId
+      );
+
+      // Check total vested amount after second schedule
+      expect(await vestingManager.getVestedToken()).to.equal(amount + secondAmount);
+    });
+
+    it("Should track claimed tokens correctly", async function () {
+      // Fast forward past cliff
+      await time.increaseTo(Math.floor(Date.now() / 1000) + 3600 * 24 * 31);
+
+      // Initial claimed amount should be 0
+      expect(await vestingManager.getClaimedTokens()).to.equal(0);
+
+      // Claim some tokens
+      await vestingManager.connect(beneficiary).claimVestedTokens(scheduleId);
+      const claimedAfterVesting = await vestingManager.getClaimedTokens();
+      expect(claimedAfterVesting).to.be.gt(0);
+
+      // Manual unlock some tokens
+      const unlockAmount = ethers.parseEther("200");
+      await vestingManager.connect(owner).manualUnlock(scheduleId, unlockAmount);
+
+      // Check claimed amount after manual unlock
+      expect(await vestingManager.getClaimedTokens()).to.equal(claimedAfterVesting + unlockAmount);
+    });
+
+    it("Should update tracking when schedule is revoked", async function () {
+      // Fast forward past cliff
+      await time.increaseTo(Math.floor(Date.now() / 1000) + 3600 * 24 * 31);
+
+      // Claim some tokens first
+      await vestingManager.connect(beneficiary).claimVestedTokens(scheduleId);
+      const claimedBeforeRevoke = await vestingManager.getClaimedTokens();
+
+      // Revoke the schedule
+      await vestingManager.connect(owner).revokeSchedule(scheduleId);
+
+      // Check that vested amount is reduced but claimed amount remains
+      expect(await vestingManager.getVestedToken()).to.equal(claimedBeforeRevoke);
+      expect(await vestingManager.getClaimedTokens()).to.equal(claimedBeforeRevoke);
+    });
+
+    it("Should track multiple schedules and claims correctly", async function () {
+      // Create second allocation and schedule
+      const secondAllocationAmount = ethers.parseEther("2000");
+      const secondTx = await vault.connect(owner).createAllocation(beneficiary.address, secondAllocationAmount);
+      const secondReceipt = await secondTx.wait();
+      const secondEvent = secondReceipt?.logs[0];
+      const secondAllocationId = secondEvent?.topics[3] ? BigInt(secondEvent.topics[3]) : BigInt(0);
+
+      const secondAmount = ethers.parseEther("1500");
+      const vestingTx = await vestingManager.connect(owner).createVestingSchedule(
+        beneficiary.address,
+        secondAmount,
+        Math.floor(Date.now() / 1000) + 3600,
+        3600 * 24 * 30,
+        3600 * 24 * 365,
+        secondAllocationId
+      );
+
+      // Fast forward past cliff
+      await time.increaseTo(Math.floor(Date.now() / 1000) + 3600 * 24 * 31);
+
+      // Check initial amounts
+      expect(await vestingManager.getVestedToken()).to.equal(amount + secondAmount);
+      expect(await vestingManager.getClaimedTokens()).to.equal(0);
+
+      // Claim from first schedule
+      await vestingManager.connect(beneficiary).claimVestedTokens(scheduleId);
+      const claimedAfterFirst = await vestingManager.getClaimedTokens();
+
+      // Manual unlock from second schedule
+      const unlockAmount = ethers.parseEther("1000");
+      await vestingManager.connect(owner).manualUnlock(2, unlockAmount);
+
+      // Check final amounts
+      expect(await vestingManager.getVestedToken()).to.equal(amount + secondAmount);
+      expect(await vestingManager.getClaimedTokens()).to.equal(claimedAfterFirst + unlockAmount);
     });
   });
 }); 

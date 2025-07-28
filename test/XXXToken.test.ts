@@ -241,4 +241,36 @@ describe("TTNToken", function () {
       expect(await token.getTokenBalance(user2.address)).to.equal(transferAmount);
     });
   });
+
+  describe("Token Supply Management", function () {
+    it("Should return correct remaining mintable tokens", async function () {
+      const initialRemaining = await token.getRemainingMintableTokens();
+      expect(initialRemaining).to.equal(await token.MAX_SUPPLY());
+
+      // Mint some tokens
+      const mintAmount = ethers.parseEther("1000000"); // 1 million tokens
+      await token.connect(owner).mint(owner.address, mintAmount);
+
+      // Check remaining tokens after mint
+      const remainingAfterMint = await token.getRemainingMintableTokens();
+      expect(remainingAfterMint).to.equal(await token.MAX_SUPPLY() - mintAmount);
+
+      // Burn some tokens
+      const burnAmount = ethers.parseEther("100000"); // 100k tokens
+      await token.connect(owner).burn(burnAmount);
+
+      // Remaining mintable tokens should not be affected by burns
+      const remainingAfterBurn = await token.getRemainingMintableTokens();
+      expect(remainingAfterBurn).to.equal(await token.MAX_SUPPLY() - mintAmount);
+    });
+
+    it("Should return zero remaining tokens when max supply is reached", async function () {
+      // Mint up to max supply
+      await token.connect(owner).mint(owner.address, await token.MAX_SUPPLY());
+
+      // Check remaining tokens
+      const remaining = await token.getRemainingMintableTokens();
+      expect(remaining).to.equal(0);
+    });
+  });
 }); 
