@@ -7,12 +7,11 @@ import "../contracts/TTNTokenVault.sol";
 import "../contracts/TTNVestingManager.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-contract DeployMultiSigScript is Script {
-    function run() external {
+contract DeployTTNScript is Script {
+   function run() external {
         
         vm.startBroadcast();
 
-        // Deploy implementation contracts
         TTNToken tokenImpl = new TTNToken();
         TokenVault vaultImpl = new TokenVault();
         VestingManager vestingImpl = new VestingManager();
@@ -22,40 +21,40 @@ contract DeployMultiSigScript is Script {
         console.log("TTNTokenVault implementation:", address(vaultImpl));
         console.log("TTNVestingManager implementation:", address(vestingImpl));
 
-
-        // Deploy proxy contracts WITHOUT initialization
-        address deployer = msg.sender;
-
-        // Deploy TTNToken proxy (without initializer)
+        // Deploy proxy contracts
+        // Get deployer address from the broadcast
+        // address deployer = 0x5fF68B636265bb203cBf6f395E8dC9B8bEBF8869;
+        // Deploy without initialization
         ERC1967Proxy tokenProxy = new ERC1967Proxy(
             address(tokenImpl),
-            ""           // Empty data (no initializer)
+            ""  // Empty data - no initialization
         );
 
         console.log("TTNToken proxy deployed at:", address(tokenProxy));
 
-        // Deploy TTNTokenVault proxy (without initializer)
+        // Deploy vault proxy without initialization
         ERC1967Proxy vaultProxy = new ERC1967Proxy(
             address(vaultImpl),
-            ""           // Empty data (no initializer)
+            ""  // Empty data - no initialization
         );
 
         console.log("TTNTokenVault proxy deployed at:", address(vaultProxy));
 
-        // Deploy TTNVestingManager proxy (without initializer)
+        // Deploy vesting manager proxy without initialization
         ERC1967Proxy vestingProxy = new ERC1967Proxy(
             address(vestingImpl),
-            ""           // Empty data (no initializer)
+            ""  // Empty data - no initialization
         );
 
         console.log("TTNVestingManager proxy deployed at:", address(vestingProxy));
+
+        // Note: Contracts are not initialized yet - will be done via Safe UI
 
         vm.stopBroadcast();
 
         console.log("\n=== DEPLOYMENT SUMMARY ===");
         console.log("Network: Base Sepolia");
-        console.log("Deployer:", deployer);
-        console.log("\nImplementation Addresses (for verification):");
+        console.log("\nImplementation Addresses:");
         console.log("TTNToken:", address(tokenImpl));
         console.log("TTNTokenVault:", address(vaultImpl));
         console.log("TTNVestingManager:", address(vestingImpl));
@@ -64,8 +63,14 @@ contract DeployMultiSigScript is Script {
         console.log("TTNTokenVault:", address(vaultProxy));
         console.log("TTNVestingManager:", address(vestingProxy));
 
-        console.log("\n=== NEXT STEPS ===");
-        console.log("1. Initialize proxy contracts on safe transaction builder");
-        console.log("2. Grant roles to TokenVault and VestingManager");
+        // These are the addresses you verify on Basescan
+        console.log("TTNToken Implementation:", address(tokenImpl));
+        console.log("TokenVault Implementation:", address(vaultImpl));
+        console.log("VestingManager Implementation:", address(vestingImpl));
+
+        // These are the addresses users interact with
+        console.log("TTNToken Proxy:", address(tokenProxy));
+        console.log("TokenVault Proxy:", address(vaultProxy));
+        console.log("VestingManager Proxy:", address(vestingProxy));
     }
 } 

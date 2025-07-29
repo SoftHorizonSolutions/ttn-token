@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 /**
- * @title XYZToken
+ * @title ABCToken
  * @author https://github.com/spikeyrock
  * @dev Implementation of an upgradeable ERC20 token with additional features:
  * - Pausable functionality for emergency stops
@@ -20,7 +20,7 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract XYZToken is
+contract ABCToken is
     Initializable,
     ERC20Upgradeable,
     ERC20BurnableUpgradeable,
@@ -72,7 +72,7 @@ contract XYZToken is
     function initialize() external initializer {
 
         // Initialize ERC20 with name and symbol
-        __ERC20_init("XYZ", "XYZ");
+        __ERC20_init("ABC", "ABC");
 
         // Initialize extensions
         __ERC20Burnable_init();

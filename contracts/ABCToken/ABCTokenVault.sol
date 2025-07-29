@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 /**
- * @title XYZTokenVault
+ * @title ABCTokenVault
  * @author https://github.com/spikeyrock
- * @dev Token Treasury & Allocation Manager for XYZToken
+ * @dev Token Treasury & Allocation Manager for ABCToken
  * - Manages minting of tokens through allocations
  * - Handles airdrops to multiple addresses
  * - Allows revocation of allocations
@@ -18,7 +18,7 @@ import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "../interfaces/ITTNToken.sol";
 
-contract XYZTokenVault is
+contract ABCTokenVault is
     Initializable,
     AccessControlUpgradeable,
     UUPSUpgradeable,
@@ -107,10 +107,10 @@ contract XYZTokenVault is
 
     /**
      * @dev Initializes the contract replacing the constructor for upgradeable contracts
-     * @param _xyzToken Address of the XYZToken contract
+     * @param _abcToken Address of the ABCToken contract
      */
-    function initialize(address _xyzToken) external initializer {
-        if (_xyzToken == address(0)) revert ZeroAddress("token");
+    function initialize(address _abcToken) external initializer {
+        if (_abcToken == address(0)) revert ZeroAddress("token");
        
       
 
@@ -119,7 +119,7 @@ contract XYZTokenVault is
         __Pausable_init();
         __ReentrancyGuard_init();
 
-        ttnToken = ITTNToken(_xyzToken);
+        ttnToken = ITTNToken(_abcToken);
 
         
 
