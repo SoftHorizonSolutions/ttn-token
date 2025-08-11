@@ -6,37 +6,34 @@ import "forge-std/Script.sol";
 contract VerifyScript is Script {
     function run() external view {
         // Get contract addresses from environment variables
-      
+        address tokenImpl = vm.envAddress("XYZ_TOKEN_IMPL");
+        address tokenProxy = vm.envAddress("XYZ_TOKEN_PROXY");
        
-        address vestingImpl = vm.envAddress("VESTING_MANAGER_IMPL");
-        address vestingProxy = vm.envAddress("VESTING_MANAGER_PROXY");
 
         console.log("Starting verification process...");
         console.log("Network:", vm.envString("HARDHAT_NETWORK"));
 
         // Verify implementation contracts
-       console.log("Verifying TTNTokenVault implementation at:", vestingImpl);
-        try this.verifyContract(vestingImpl, "contracts/TTNTokenVault.sol:TTNTokenVault") {
-            console.log("TTNTokenVault implementation verified successfully");
+        console.log("\n=== Verifying Implementation Contracts ===");
+        
+        console.log("Verifying XYZToken implementation at:", tokenImpl);
+        try this.verifyContract(tokenImpl, "contracts/XYZToken.sol:XYZToken") {
+            console.log("XYZToken implementation verified successfully");
         } catch {
-            console.log("Failed to verify TTNTokenVault implementation");
+            console.log("Failed to verify XYZToken implementation");
         }
-        
 
-        
-        
+
         // Verify proxy contracts
         console.log("\n=== Verifying Proxy Contracts ===");
-        console.log("Verifying TTNTokenVault proxy at:", vestingProxy);
-        try this.verifyProxy(vestingProxy, vestingImpl) {
-            console.log("TTNTokenVault proxy verified successfully");
-        } catch {
-            console.log("Failed to verify TTNTokenVault proxy");
-        }
-       
-
         
-       
+        console.log("Verifying XYZToken proxy at:", tokenProxy);
+        try this.verifyProxy(tokenProxy, tokenImpl) {
+            console.log("XYZToken proxy verified successfully");
+        } catch {
+            console.log("Failed to verify XYZToken proxy");
+        }
+
 
         console.log("\n=== Verification Complete ===");
     }

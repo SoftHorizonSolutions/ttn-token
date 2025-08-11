@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 /**
- * @title XYZVestingManager
+ * @title ABCVestingManager
  * @author https://github.com/spikeyrock
- * @dev Manages vesting schedules, locking, unlocking, and claiming of XYZ tokens
+ * @dev Manages vesting schedules, locking, unlocking, and claiming of ABC tokens
  * - Create vesting schedules for beneficiaries
  * - Lock tokens according to vesting schedules
  * - Unlock tokens based on schedule or manually
@@ -20,14 +20,14 @@ import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol
 import "../interfaces/ITTNToken.sol";
 import "../interfaces/ITokenVault.sol";
 
-contract XYZVestingManager is Initializable, 
+contract ABCVestingManager is Initializable, 
     AccessControlUpgradeable, 
     UUPSUpgradeable, 
     PausableUpgradeable,
     ReentrancyGuardUpgradeable {
 
     // State variables
-    ITTNToken public ttnToken;
+    ITTNToken public abcToken;
     ITokenVault public tokenVault;
 
     // Vesting schedule structure
@@ -123,15 +123,15 @@ contract XYZVestingManager is Initializable,
 
     /**
      * @dev Initializes the contract replacing the constructor for upgradeable contracts
-     * @param _xyzToken Address of the XYZToken contract
+     * @param _abcToken Address of the ABCToken contract
      * @param _tokenVault Address of the TokenVault contract
      * @param _admin Address of the admin
      * @notice Can only be called once
      */
-    function initialize(address _xyzToken, address _tokenVault, address _admin) external initializer {
+    function initialize(address _abcToken, address _tokenVault, address _admin) external initializer {
 
         // Validate input parameters
-        if (_xyzToken == address(0)) revert ZeroAddress("token");
+        if (_abcToken == address(0)) revert ZeroAddress("token");
         if (_tokenVault == address(0)) revert ZeroAddress("vault");
         if (_admin == address(0)) revert ZeroAddress("admin");
 
@@ -142,7 +142,7 @@ contract XYZVestingManager is Initializable,
         __ReentrancyGuard_init();
         
         // Set contract addresses
-        ttnToken = ITTNToken(_xyzToken);
+        abcToken = ITTNToken(_abcToken);
         tokenVault = ITokenVault(_tokenVault);
         
         // Grant admin roles to specified admin
@@ -283,7 +283,7 @@ contract XYZVestingManager is Initializable,
     
         
         // Mint tokens to beneficiary
-        ttnToken.mint(schedule.beneficiary, releasableAmount);
+        abcToken.mint(schedule.beneficiary, releasableAmount);
         
         // Reduce the allocated amount in TokenVault if allocationId is set
         if (schedule.allocationId > 0) {
@@ -330,7 +330,7 @@ contract XYZVestingManager is Initializable,
         schedule.releasedAmount += amount;
         
         // Mint tokens to beneficiary
-        ttnToken.mint(schedule.beneficiary, amount);
+        abcToken.mint(schedule.beneficiary, amount);
 
         // Reduce the allocated amount in TokenVault if allocationId is set
         if (schedule.allocationId > 0) {
