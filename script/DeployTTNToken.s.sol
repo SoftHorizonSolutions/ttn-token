@@ -5,17 +5,13 @@ import "forge-std/Script.sol";
 import "../contracts/TTNToken.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-contract DeployTTNScript is Script {
+contract DeployTTNTokenScript is Script {
    function run() external {
         
         vm.startBroadcast();
 
         // Deploy implementation contracts
         TTNToken tokenImpl = new TTNToken();
-       
-
-        console.log("Implementation contracts deployed:");
-        console.log("TTNToken implementation:", address(tokenImpl));
        
 
         // Deploy proxy contracts
@@ -29,20 +25,22 @@ contract DeployTTNScript is Script {
 
         console.log("TTNToken proxy deployed at:", address(tokenProxy));
 
-        
-
        
-        // Note: Contracts are not initialized yet - will be done via Safe UI
-
         vm.stopBroadcast();
 
         console.log("\n=== DEPLOYMENT SUMMARY ===");
-        console.log("Network: Base");
+        console.log("Network: Base Sepolia");
         console.log("\nImplementation Addresses:");
         console.log("TTNToken:", address(tokenImpl));
        
+        console.log("\nProxy Addresses:");
+        console.log("TTNToken:", address(tokenProxy));
+
+        // These are the addresses you verify on Basescan
+        console.log("TTNToken Implementation:", address(tokenImpl));
+   
         // These are the addresses users interact with
         console.log("TTNToken Proxy:", address(tokenProxy));
-       
+
     }
 } 
