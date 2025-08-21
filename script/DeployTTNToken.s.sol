@@ -17,10 +17,14 @@ contract DeployTTNTokenScript is Script {
         // Deploy proxy contracts
         // Get deployer address from the broadcast
         // address deployer = 0x5fF68B636265bb203cBf6f395E8dC9B8bEBF8869;
-        // Deploy without initialization
+        
+        // Prepare initialization data for TTNToken
+        bytes memory initData = abi.encodeWithSelector(TTNToken.initialize.selector);
+        
+        // Deploy with initialization
         ERC1967Proxy tokenProxy = new ERC1967Proxy(
             address(tokenImpl),
-            ""  // Empty data - no initialization
+            initData  // Initialize the contract
         );
 
         console.log("TTNToken proxy deployed at:", address(tokenProxy));
