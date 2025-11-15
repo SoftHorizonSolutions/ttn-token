@@ -8,6 +8,7 @@ dotenv.config();
 // Get environment variables or use defaults
 const PRIVATE_KEY = process.env.PRIVATE_KEY || "";
 const BASE_GOERLI_URL = process.env.BASE_GOERLI_URL || "https://goerli.base.org";
+const BASE_SEPOLIA_URL = process.env.BASE_SEPOLIA_URL || "https://sepolia.base.org";
 const MAINNET_URL = process.env.MAINNET_URL || "https://mainnet.base.org";
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";
 
@@ -34,6 +35,13 @@ const config: HardhatUserConfig = {
       chainId: 84531,
       gasPrice: 1000000000, // 1 gwei
     },
+    // Base Sepolia testnet
+    baseSepolia: {
+      url: BASE_SEPOLIA_URL,
+      accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
+      chainId: 84532,
+      gasPrice: 1000000000, // 1 gwei
+    },
     // Base mainnet
     base: {
       url: MAINNET_URL,
@@ -46,7 +54,8 @@ const config: HardhatUserConfig = {
   etherscan: {
     apiKey: {
       base: ETHERSCAN_API_KEY,
-      baseGoerli: ETHERSCAN_API_KEY
+      baseGoerli: ETHERSCAN_API_KEY,
+      baseSepolia: ETHERSCAN_API_KEY
     },
     customChains: [
       {
@@ -63,6 +72,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api-goerli.basescan.org/api",
           browserURL: "https://goerli.basescan.org"
+        }
+      },
+      {
+        network: "baseSepolia",
+        chainId: 84532,
+        urls: {
+          apiURL: "https://api-sepolia.basescan.org/api",
+          browserURL: "https://sepolia.basescan.org"
         }
       }
     ]

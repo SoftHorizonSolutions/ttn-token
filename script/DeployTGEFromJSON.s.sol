@@ -36,6 +36,12 @@ contract DeployTGEFromJSON is Script {
         console.log("Unlock date: Thursday, 23 October 2025 12:00:00 UTC");
         console.log("");
         
+        // Arrays to store schedule data
+        uint256[] memory scheduleIds = new uint256[](totalAddresses);
+        address[] memory beneficiaries = new address[](totalAddresses);
+        uint256[] memory amounts = new uint256[](totalAddresses);
+        string[] memory labels = new string[](totalAddresses);
+        
         vm.startBroadcast();
         
         for (uint256 i = 0; i < totalAddresses; i++) {
@@ -45,7 +51,8 @@ contract DeployTGEFromJSON is Script {
             uint256 amount = vm.parseJsonUint(json, string.concat(basePath, ".amount"));
             string memory label = vm.parseJsonString(json, string.concat(basePath, ".label"));
             
-            vesting.createVestingSchedule(
+            // Create vesting schedule and capture the returned schedule ID
+            uint256 scheduleId = vesting.createVestingSchedule(
                 beneficiary,
                 amount,
                 unlockTime,
@@ -54,7 +61,13 @@ contract DeployTGEFromJSON is Script {
                 0   // No allocation ID
             );
             
-            console.log("Created:", label);
+            // Store the data
+            scheduleIds[i] = scheduleId;
+            beneficiaries[i] = beneficiary;
+            amounts[i] = amount;
+            labels[i] = label;
+            
+            console.log("Created Schedule ID:", scheduleId, "for:", label);
         }
         
         vm.stopBroadcast();
