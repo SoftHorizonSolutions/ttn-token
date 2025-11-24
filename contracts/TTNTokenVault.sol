@@ -109,7 +109,7 @@ contract TokenVault is
      * @dev Initializes the contract replacing the constructor for upgradeable contracts
      * @param _ttnToken Address of the TTNToken contract
      */
-    function initialize(address _ttnToken) external initializer {     
+    function initialize(address _ttnToken) external initializer {
         if (_ttnToken == address(0)) revert ZeroAddress("token");
        
       
