@@ -331,6 +331,7 @@ contract VestingManager is Initializable,
         
         // Mint tokens to beneficiary
         ttnToken.mint(schedule.beneficiary, amount);
+        
 
         // Reduce the allocated amount in TokenVault if allocationId is set
         if (schedule.allocationId > 0) {

@@ -6,12 +6,14 @@ remappings = [
     "@openzeppelin/=node_modules/@openzeppelin/",
     "eth-gas-reporter/=node_modules/eth-gas-reporter/",
     "hardhat/=node_modules/hardhat/",
+    "contracts/=contracts/",
 ]
 
 # Solidity compiler settings
 solc_version = "0.8.28"
 optimizer = true
 optimizer_runs = 200
+via_ir = true
 ffi = true
 
 # File system permissions for scripts
@@ -26,5 +28,9 @@ base_sepolia = "${RPC_URL}"
 
 [etherscan]
 base_sepolia = { key = "${BASESCAN_API_KEY}" }
+
+# RPC timeout settings (in seconds)
+[profile.default.rpc]
+timeout = 300  # 5 minutes timeout for RPC calls
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

@@ -1,0 +1,55 @@
+{
+  "totalAddresses": 10,
+  "records": [
+    {
+      "address": "0xb42e624bd93ae8e02894f98b044eab83aaf0b8e6",
+      "amount": "412000000000000000000",
+      "label": "Yomi"
+    },
+    {
+      "address": "0xa7b924a8795260a5bef7275b72cd3567a25cb9a7",
+      "amount": "369000000000000000000",
+      "label": "JaksaMuda"
+    },
+    {
+      "address": "0x02f217134833bf6f920cbe724b8ed7fa88f3a73e",
+      "amount": "337000000000000000000",
+      "label": "Icon_jay"
+    },
+    {
+      "address": "0x1ce9476510c9a853effad9b13bc8d06cf3b5431d",
+      "amount": "332670000000000000000",
+      "label": "Vanesd"
+    },
+    {
+      "address": "0x8D8c9c534650e9F9E0B21d7fff8CBB7872F299Fb",
+      "amount": "323670000000000000000",
+      "label": "Real___estate__"
+    },
+    {
+      "address": "0xCaD92A2203a885dD8EB8A674F03056794Ff65c6C",
+      "amount": "318670000000000000000",
+      "label": "KeenRale80775"
+    },
+    {
+      "address": "0xC190C8a605c9C6538b86Ad5bAc40119eB74134fc",
+      "amount": "318000000000000000000",
+      "label": "Davisashle59324."
+    },
+    {
+      "address": "0x494a6e1548b6ec0e8ac086d02d8fc752cdfaea4b",
+      "amount": "312330000000000000000",
+      "label": "0xNomad"
+    },
+    {
+      "address": "0xd13f5c072a6255961f176f993be5c5fd31524c1b",
+      "amount": "310670000000000000000",
+      "label": "9_99ad"
+    },
+    {
+      "address": "0x3f1388F73e1931b8C138fA6c03130038a4cc69C2",
+      "amount": "310000000000000000000",
+      "label": "(Ava_garcia)"
+    }
+  ]
+}
