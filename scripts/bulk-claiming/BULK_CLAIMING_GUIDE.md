@@ -364,16 +364,23 @@ Check on-chain that vesting schedules were created:
 ## 🎯 Quick Reference Commands
 
 ```bash
-# Convert CSV to JSON
-npx ts-node scripts/bulk-claiming/convertClaimingCsvToJson.ts "path/to/file.csv"
+# Convert first CSV - creates new JSON
+npx ts-node scripts/bulk-claiming/convertClaimingCsvToJson.ts "scripts/bulk-claiming/Airdrop Claim(Galxe).csv"
+
+# Convert second CSV - appends to same JSON
+npx ts-node scripts/bulk-claiming/convertClaimingCsvToJson.ts "scripts/bulk-claiming/claiming-addresses.csv.csv"
 
 # Process next 50 addresses (auto-resume)
 forge script script/bulk-claiming/BulkCreateAllocationsAndVestingBatched.s.sol:BulkCreateAllocationsAndVestingBatched \
   --sig "run(uint256)" 50 --rpc-url <RPC> --private-key <KEY> --broadcast --ffi
 
 # Start from index 0 (reset)
-forge script script/bulk-claiming/BulkCreateAllocationsAndVestingBatched.s.sol:BulkCreateAllocationsAndVestingBatched \
-  --sig "run(uint256,uint256)" 0 50 --rpc-url <RPC> --private-key <KEY> --broadcast --ffi
+  forge script script/bulk-claiming/BulkCreateAllocationsAndVestingBatched.s.sol:BulkCreateAllocationsAndVestingBatched \
+  --sig "run(uint256,uint256)" 0 50 \
+  --rpc-url <RPC> \
+  --private-key <KEY> \
+  --broadcast \
+  --ffi
 
 # Check progress
 cat scripts/bulk-claiming/data/deployment-progress.json

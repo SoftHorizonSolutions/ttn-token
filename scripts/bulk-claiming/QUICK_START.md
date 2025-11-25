@@ -4,16 +4,26 @@
 
 ### 1. Convert CSV to JSON
 ```bash
+# Convert first CSV - creates new JSON
 npx ts-node scripts/bulk-claiming/convertClaimingCsvToJson.ts "scripts/bulk-claiming/Airdrop Claim(Galxe).csv"
-```
+
+# Convert second CSV - appends to same JSON
+npx ts-node scripts/bulk-claiming/convertClaimingCsvToJson.ts "scripts/bulk-claiming/claiming-addresses.csv.csv"
 
 ### 2. Set Environment Variables
 ```bash
 export VESTING_MANAGER_PROXY="0xYourVestingManagerAddress"
 export TOKEN_VAULT_PROXY="0xYourTokenVaultAddress"
 ```
+## 3.0 Starts from batch one.
+forge script script/bulk-claiming/BulkCreateAllocationsAndVestingBatched.s.sol:BulkCreateAllocationsAndVestingBatched \
+  --sig "run(uint256,uint256)" 0 50 \
+  --rpc-url https://sepolia.base.org \
+  --private-key 835cabaa3818eff3bcc991decf13e77b5be3eaaab584334b1488285df8bf68c5 \
+  --broadcast \
+  --ffi
 
-### 3. Process Next Batch (Auto-Resume)
+### 3.1 Process Next Batch (Auto-Resume)
 ```bash
 forge script script/bulk-claiming/BulkCreateAllocationsAndVestingBatched.s.sol:BulkCreateAllocationsAndVestingBatched \
   --sig "run(uint256)" 50 \
