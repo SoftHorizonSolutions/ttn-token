@@ -49,8 +49,9 @@ import "../../contracts/interfaces/ITTNToken.sol";
  *       Each address creates 2 on-chain transactions (allocation + vesting schedule).
  */
 contract BulkCreateAllocationsAndVestingBatched is Script {
-    // Claim start time timestamp
-    uint256 constant CLAIM_START_TIME = 1764370800;
+    // Vesting schedule start times
+    uint256 constant FIRST_VESTING_START_TIME = 1764460800; // Nov 30, 2025 00:00 UTC
+    uint256 constant SECOND_VESTING_START_TIME = 1767052800; // Dec 30, 2025 00:00 UTC
     
     // Default batch size if not provided
     uint256 constant DEFAULT_BATCH_SIZE = 50;
@@ -92,12 +93,14 @@ contract BulkCreateAllocationsAndVestingBatched is Script {
         console.log("");
         
         // First, get totalAddresses without loading the entire file
+        // Extract just the totalAddresses field as a minimal JSON object
         string[] memory totalReadInputs = new string[](3);
         totalReadInputs[0] = "sh";
         totalReadInputs[1] = "-c";
-        totalReadInputs[2] = string.concat("jq -r '.totalAddresses' ", DATA_FILE);
+        totalReadInputs[2] = string.concat("jq '{totalAddresses: .totalAddresses}' ", DATA_FILE);
         bytes memory totalResult = vm.ffi(totalReadInputs);
-        uint256 totalAddresses = vm.parseUint(string(totalResult));
+        string memory totalJson = string(totalResult);
+        uint256 totalAddresses = vm.parseJsonUint(totalJson, ".totalAddresses");
         
         // Calculate actual batch size and end index
         uint256 endIndex = startIndex + batchSize;
@@ -130,7 +133,8 @@ contract BulkCreateAllocationsAndVestingBatched is Script {
         console.log("Batch size:", actualBatchSize);
         console.log("End index:", endIndex);
         console.log("Progress:", startIndex, "/", totalAddresses);
-        console.log("Claim start time:", CLAIM_START_TIME);
+        console.log("First vesting start time:", FIRST_VESTING_START_TIME, "(Nov 30, 2025 00:00 UTC)");
+        console.log("Second vesting start time:", SECOND_VESTING_START_TIME, "(Dec 30, 2025 00:00 UTC)");
         console.log("Current block timestamp:", block.timestamp);
         console.log("");
         
@@ -141,9 +145,10 @@ contract BulkCreateAllocationsAndVestingBatched is Script {
         
         console.log("=== Creating Allocations and Vesting Schedules ===");
         console.log("Processing addresses", startIndex, "to", endIndex - 1);
-        console.log("NOTE: Each address will create 2 on-chain transactions");
+        console.log("NOTE: Each address will create 3 on-chain transactions");
         console.log("  - Transaction 1: createAllocation");
-        console.log("  - Transaction 2: createVestingSchedule");
+        console.log("  - Transaction 2: createVestingSchedule (first half - Nov 30, 2025)");
+        console.log("  - Transaction 3: createVestingSchedule (second half - Dec 30, 2025)");
         console.log("");
         
         uint256 successCount = 0;
@@ -189,38 +194,71 @@ contract BulkCreateAllocationsAndVestingBatched is Script {
                 continue;
             }
             
-            // Step 2: Create vesting schedule (sends on-chain transaction)
-            uint256 scheduleId;
-            bool vestingSuccess = false;
+            // Step 2: Split amount into two halves
+            uint256 halfAmount = amount / 2;
+            uint256 remainder = amount - halfAmount; // Handle odd amounts
+            
+            // Step 3: Create first vesting schedule (half amount - Nov 30, 2025)
+            uint256 scheduleId1;
+            bool vestingSuccess1 = false;
             
             try vesting.createVestingSchedule(
                 beneficiary,
-                amount,
-                CLAIM_START_TIME,
+                halfAmount,
+                FIRST_VESTING_START_TIME,
                 0,              // No cliff
                 1,              // 1 second duration (immediate unlock)
                 allocationId
             ) returns (uint256 id) {
-                scheduleId = id;
-                vestingSuccess = true;
+                scheduleId1 = id;
+                vestingSuccess1 = true;
             } catch Error(string memory reason) {
-                console.log("  FAILED to create vesting schedule for address", i);
+                console.log("  FAILED to create first vesting schedule for address", i);
                 console.log("  Error:", reason);
                 failCount++;
-                // Save progress even if vesting fails (allocation was created)
                 saveProgress(i);
                 continue;
             } catch (bytes memory) {
-                console.log("  FAILED to create vesting schedule for address", i);
+                console.log("  FAILED to create first vesting schedule for address", i);
                 console.log("  Error: Custom error or revert");
                 failCount++;
                 saveProgress(i);
                 continue;
             }
             
-            if (allocationSuccess && vestingSuccess) {
+            // Step 4: Create second vesting schedule (remainder - Dec 30, 2025)
+            uint256 scheduleId2;
+            bool vestingSuccess2 = false;
+            
+            try vesting.createVestingSchedule(
+                beneficiary,
+                remainder,
+                SECOND_VESTING_START_TIME,
+                0,              // No cliff
+                1,              // 1 second duration (immediate unlock)
+                allocationId
+            ) returns (uint256 id) {
+                scheduleId2 = id;
+                vestingSuccess2 = true;
+            } catch Error(string memory reason) {
+                console.log("  FAILED to create second vesting schedule for address", i);
+                console.log("  Error:", reason);
+                failCount++;
+                // Save progress even if second vesting fails (allocation and first vesting were created)
+                saveProgress(i);
+                continue;
+            } catch (bytes memory) {
+                console.log("  FAILED to create second vesting schedule for address", i);
+                console.log("  Error: Custom error or revert");
+                failCount++;
+                saveProgress(i);
+                continue;
+            }
+            
+            if (allocationSuccess && vestingSuccess1 && vestingSuccess2) {
                 successCount++;
-                // Save progress after each successful pair
+                // Save progress after each successful set (allocation + 2 vesting schedules)
+                // Save i+1 (next index to process) so we continue from the next index
                 saveProgress(i + 1);
             }
             
@@ -230,9 +268,10 @@ contract BulkCreateAllocationsAndVestingBatched is Script {
                 uint256 globalProgress = i + 1;
                 console.log("Progress:", batchProgress, "/", actualBatchSize);
                 console.log("Global progress:", globalProgress, "/", totalAddresses);
-                if (allocationSuccess && vestingSuccess) {
+                if (allocationSuccess && vestingSuccess1 && vestingSuccess2) {
                     console.log("Allocation ID:", allocationId);
-                    console.log("Schedule ID:", scheduleId);
+                    console.log("Schedule ID 1 (Nov 30, 2025):", scheduleId1);
+                    console.log("Schedule ID 2 (Dec 30, 2025):", scheduleId2);
                 }
             }
         }
@@ -244,14 +283,21 @@ contract BulkCreateAllocationsAndVestingBatched is Script {
         console.log("Successfully processed:", successCount);
         console.log("Failed:", failCount);
         console.log("Last processed index:", endIndex - 1);
-        console.log("Claim start time:", CLAIM_START_TIME);
+        console.log("First vesting start time:", FIRST_VESTING_START_TIME, "(Nov 30, 2025 00:00 UTC)");
+        console.log("Second vesting start time:", SECOND_VESTING_START_TIME, "(Dec 30, 2025 00:00 UTC)");
         console.log("");
         console.log("To continue, run:");
         console.log("  forge script script/bulk-claiming/BulkCreateAllocationsAndVestingBatched.s.sol:BulkCreateAllocationsAndVestingBatched --sig \"run(uint256)\"", actualBatchSize, "--rpc-url <rpc> --private-key <key> --broadcast --ffi");
     }
     
     /**
-     * @dev Load progress from file, returns last processed index + 1 (next index to process)
+     * @dev Load progress from file, returns next index to process
+     *      Progress file semantics:
+     *      - On success: saves i+1 (next index to process)
+     *      - On failure: saves i (failed index to retry)
+     *      - On load: returns lastIndex directly (not +1) to handle both cases:
+     *        * If lastIndex was saved after success, it's the next index to process (correct)
+     *        * If lastIndex was saved after failure, it's the failed index to retry (correct)
      */
     function loadProgress() internal returns (uint256) {
         string[] memory readInputs = new string[](2);
@@ -263,9 +309,11 @@ contract BulkCreateAllocationsAndVestingBatched is Script {
             
             // Try to parse lastProcessedIndex, but handle negative values or invalid data
             try vm.parseJsonUint(json, ".lastProcessedIndex") returns (uint256 lastIndex) {
-                // If lastIndex is valid and >= 0, resume from next index
-                console.log("Resuming from index:", lastIndex + 1);
-                return lastIndex + 1;
+                // Return lastIndex directly:
+                // - If saved after success: lastIndex = i+1 (next index to process) ✓
+                // - If saved after failure: lastIndex = i (failed index to retry) ✓
+                console.log("Resuming from index:", lastIndex);
+                return lastIndex;
             } catch {
                 // If parsing fails (e.g., -1 or invalid), start from 0
                 console.log("Invalid progress data, starting from index 0");

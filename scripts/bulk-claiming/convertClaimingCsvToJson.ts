@@ -18,6 +18,11 @@ import * as path from 'path';
  * Defaults:
  *   input: scripts/bulk-claiming/data/claiming-addresses.csv
  *   output: scripts/bulk-claiming/data/claiming-addresses.json
+ * 
+ * Behavior:
+ *   - If output JSON already exists, new records will be merged/appended
+ *   - Duplicate addresses will have their amounts combined
+ *   - All records are saved to the same JSON file
  */
 
 interface ClaimingRecord {
@@ -183,23 +188,88 @@ function convertCsvToJson(): void {
     });
   }
   
-  console.log(`✅ Parsed ${records.length} valid addresses`);
+  console.log(`✅ Parsed ${records.length} valid addresses from CSV`);
   if (skippedCount > 0) {
     console.log(`⏭️  Skipped ${skippedCount} invalid rows (missing address or amount)`);
   }
   
-  // Calculate total
-  const totalAllocation = records.reduce((sum, r) => sum + BigInt(r.amount), BigInt(0));
+  // Check if output JSON file already exists and load existing records
+  let existingRecords: ClaimingRecord[] = [];
+  let existingTotalAllocation = BigInt(0);
+  
+  if (fs.existsSync(jsonOutputPath)) {
+    try {
+      const existingContent = fs.readFileSync(jsonOutputPath, 'utf-8');
+      const existingData = JSON.parse(existingContent);
+      existingRecords = existingData.records || [];
+      existingTotalAllocation = BigInt(existingData.totalAllocation || '0');
+      console.log(`📂 Found existing JSON with ${existingRecords.length} addresses`);
+      console.log(`   Existing total: ${(Number(existingTotalAllocation) / 1e18).toLocaleString()} tokens`);
+    } catch (error) {
+      console.warn(`⚠️  Could not read existing JSON file, starting fresh: ${error}`);
+    }
+  }
+  
+  // Merge new records with existing records
+  // If same address exists, merge amounts (add them together)
+  const addressMap = new Map<string, ClaimingRecord>();
+  
+  // Add existing records to map
+  for (const record of existingRecords) {
+    const address = record.address.toLowerCase();
+    if (addressMap.has(address)) {
+      // Merge amounts if address already exists
+      const existing = addressMap.get(address)!;
+      const existingAmount = BigInt(existing.amount);
+      const newAmount = BigInt(record.amount);
+      existing.amount = (existingAmount + newAmount).toString();
+      // Keep the first label or combine them
+      if (record.label && existing.label !== record.label) {
+        existing.label = `${existing.label} | ${record.label}`;
+      }
+    } else {
+      addressMap.set(address, { ...record });
+    }
+  }
+  
+  // Add new records to map (merge if address exists, otherwise add new)
+  for (const record of records) {
+    const address = record.address.toLowerCase();
+    if (addressMap.has(address)) {
+      // Merge amounts for existing address
+      const existing = addressMap.get(address)!;
+      const existingAmount = BigInt(existing.amount);
+      const newAmount = BigInt(record.amount);
+      existing.amount = (existingAmount + newAmount).toString();
+      // Update label if different
+      if (record.label && existing.label !== record.label) {
+        existing.label = `${existing.label} | ${record.label}`;
+      }
+      console.log(`   ⚠️  Merged duplicate address: ${record.address} (amounts combined)`);
+    } else {
+      addressMap.set(address, { ...record });
+    }
+  }
+  
+  // Convert map back to array
+  const mergedRecords = Array.from(addressMap.values());
+  
+  // Calculate new totals
+  const newRecordsAllocation = records.reduce((sum, r) => sum + BigInt(r.amount), BigInt(0));
+  const totalAllocation = existingTotalAllocation + newRecordsAllocation;
   const totalInTokens = Number(totalAllocation) / 1e18;
-  console.log(`📊 Total Allocation: ${totalInTokens.toLocaleString()} tokens`);
+  const newRecordsTokens = Number(newRecordsAllocation) / 1e18;
+  
+  console.log(`\n📊 New records: ${newRecordsTokens.toLocaleString()} tokens`);
+  console.log(`📊 Total (merged): ${totalInTokens.toLocaleString()} tokens`);
   console.log(`💰 Total in WEI: ${totalAllocation.toString()}`);
   
-  // Write JSON
+  // Write merged JSON
   const output = {
-    totalAddresses: records.length,
+    totalAddresses: mergedRecords.length,
     totalAllocation: totalAllocation.toString(),
     description: "Addresses eligible for claiming on November 30, 2024 12:00:00 UTC+1",
-    records: records
+    records: mergedRecords
   };
   
   // Ensure output directory exists
@@ -211,12 +281,18 @@ function convertCsvToJson(): void {
   fs.writeFileSync(jsonOutputPath, JSON.stringify(output, null, 2));
   console.log(`✅ JSON written to: ${jsonOutputPath}`);
   
+  // Final summary - highlight total addresses
+  console.log('\n' + '='.repeat(60));
+  console.log(`📊 TOTAL ADDRESSES IN JSON: ${mergedRecords.length.toLocaleString()}`);
+  console.log('='.repeat(60));
+  
   // Validation summary
   console.log('\n📋 Validation Summary:');
-  console.log(`   Total addresses: ${records.length}`);
+  console.log(`   New addresses from CSV: ${records.length}`);
+  console.log(`   Total addresses (merged): ${mergedRecords.length}`);
   console.log(`   Total allocation: ${totalAllocation.toString()} wei`);
   console.log(`   Total tokens: ${totalInTokens.toLocaleString()}`);
-  console.log(`   Average per address: ${(totalInTokens / records.length).toFixed(2)} tokens`);
+  console.log(`   Average per address: ${(totalInTokens / mergedRecords.length).toFixed(2)} tokens`);
   
   console.log('\n✨ Conversion complete! Ready to run bulk claiming deployment');
   console.log('\nNext steps:');
