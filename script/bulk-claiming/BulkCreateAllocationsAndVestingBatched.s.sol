@@ -258,6 +258,7 @@ contract BulkCreateAllocationsAndVestingBatched is Script {
             if (allocationSuccess && vestingSuccess1 && vestingSuccess2) {
                 successCount++;
                 // Save progress after each successful set (allocation + 2 vesting schedules)
+                // Save i+1 (next index to process) so we continue from the next index
                 saveProgress(i + 1);
             }
             
@@ -290,7 +291,13 @@ contract BulkCreateAllocationsAndVestingBatched is Script {
     }
     
     /**
-     * @dev Load progress from file, returns last processed index + 1 (next index to process)
+     * @dev Load progress from file, returns next index to process
+     *      Progress file semantics:
+     *      - On success: saves i+1 (next index to process)
+     *      - On failure: saves i (failed index to retry)
+     *      - On load: returns lastIndex directly (not +1) to handle both cases:
+     *        * If lastIndex was saved after success, it's the next index to process (correct)
+     *        * If lastIndex was saved after failure, it's the failed index to retry (correct)
      */
     function loadProgress() internal returns (uint256) {
         string[] memory readInputs = new string[](2);
@@ -302,9 +309,11 @@ contract BulkCreateAllocationsAndVestingBatched is Script {
             
             // Try to parse lastProcessedIndex, but handle negative values or invalid data
             try vm.parseJsonUint(json, ".lastProcessedIndex") returns (uint256 lastIndex) {
-                // If lastIndex is valid and >= 0, resume from next index
-                console.log("Resuming from index:", lastIndex + 1);
-                return lastIndex + 1;
+                // Return lastIndex directly:
+                // - If saved after success: lastIndex = i+1 (next index to process) ✓
+                // - If saved after failure: lastIndex = i (failed index to retry) ✓
+                console.log("Resuming from index:", lastIndex);
+                return lastIndex;
             } catch {
                 // If parsing fails (e.g., -1 or invalid), start from 0
                 console.log("Invalid progress data, starting from index 0");
