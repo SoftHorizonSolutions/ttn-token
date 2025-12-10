@@ -5,7 +5,11 @@
   "scripts": {
     "deploy": "npx hardhat run scripts/deploy.js --network base_goerli",
     "upgrade": "npx hardhat run scripts/upgrade.js --network base_goerli",
-    "test": "npx hardhat test"
+    "test": "npx hardhat test",
+    "query-claims": "./scripts/query-claims.sh",
+    "query-claims-forge": "forge script script/QueryClaimHistory.s.sol:QueryClaimHistory --rpc-url $BASE_RPC_URL",
+    "query-unclaimed": "npx hardhat run scripts/query-unclaimed-wallets.ts --network base",
+    "query-unclaimed-sh": "./scripts/query-unclaimed-wallets.sh"
   },
   "repository": {
     "type": "git",

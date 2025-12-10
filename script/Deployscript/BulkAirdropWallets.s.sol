@@ -46,6 +46,7 @@ contract BulkAirdropWallets is Script {
         uint256[] memory amounts = new uint256[](totalAddresses);
         string[] memory labels = new string[](totalAddresses);
         
+        
         // Parse all data from JSON
         for (uint256 i = 0; i < totalAddresses; i++) {
             string memory basePath = string.concat(".records[", vm.toString(i), "]");

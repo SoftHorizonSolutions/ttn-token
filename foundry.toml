@@ -25,9 +25,11 @@ fs_permissions = [
 # Network configurations
 [rpc_endpoints]
 base_sepolia = "${RPC_URL}"
+base = "${BASE_RPC_URL:-https://mainnet.base.org}"
 
 [etherscan]
 base_sepolia = { key = "${BASESCAN_API_KEY}" }
+base = { key = "${BASESCAN_API_KEY}" }
 
 # RPC timeout settings (in seconds)
 [profile.default.rpc]
