@@ -5,7 +5,11 @@
   "scripts": {
     "deploy": "npx hardhat run scripts/deploy.js --network base_goerli",
     "upgrade": "npx hardhat run scripts/upgrade.js --network base_goerli",
-    "test": "npx hardhat test"
+    "test": "npx hardhat test",
+    "query-claims": "./scripts/query-claims.sh",
+    "query-claims-forge": "forge script script/QueryClaimHistory.s.sol:QueryClaimHistory --rpc-url $BASE_RPC_URL",
+    "query-unclaimed": "npx hardhat run scripts/query-unclaimed-wallets.ts --network base",
+    "query-unclaimed-sh": "./scripts/query-unclaimed-wallets.sh"
   },
   "repository": {
     "type": "git",
@@ -26,6 +30,7 @@
   },
   "dependencies": {
     "@openzeppelin/contracts-upgradeable": "^5.3.0",
+    "@openzeppelin/foundry-upgrades": "^0.4.0",
     "@openzeppelin/hardhat-upgrades": "^3.9.0",
     "dotenv": "^16.5.0",
     "react-toastify": "^11.0.5"
