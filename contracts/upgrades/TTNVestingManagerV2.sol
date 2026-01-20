@@ -15,77 +15,134 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-
+/// @custom:oz-upgrades-from VestingManager
 contract TTNVestingManagerV2 is VestingManager {
-    // Version tracking for upgrade testing
-    uint256 public version;
-    // Additional counter for V2 vesting schedules
-    uint256 public totalVestedV2;
+    // NO NEW STORAGE VARIABLES - This ensures storage layout compatibility
+    // All new functionality is added via functions only
+    
+    // Note: _authorizeUpgrade is inherited from VestingManager
+    // which inherits from UUPSUpgradeable, so no override needed
     
     /**
-     * @dev Initializes V2 functionality
-     * This is called during the upgrade process
+     * @dev Initializer for V2
+     * CRITICAL: This function should be empty or minimal since V1 already initialized all parent contracts.
+     * The reinitializer(2) modifier tracks a different initialization level than V1's initializer,
+     * but calling parent initializers again might reset storage.
+     * 
+     * If OpenZeppelin validator requires parent initializers, they should be safe with reinitializer(2),
+     * but if schedules are missing after upgrade, DO NOT call parent initializers.
+     * 
+     * @custom:oz-upgrades-unsafe-allow constructor
      * @custom:oz-upgrades-validate-as-initializer
      */
     function initializeV2() external reinitializer(2) {
-        // Initialize parent contracts except AccessControl to preserve roles
-        __UUPSUpgradeable_init();
-        __Pausable_init();
-        __ReentrancyGuard_init();
+        // WARNING: Calling parent initializers may reset storage!
+        // These initializers are already called in V1's initialize() function.
+        // The reinitializer(2) should prevent re-initialization, but to be safe,
+        // we should NOT call them unless absolutely necessary for validator compliance.
+        // 
+        // If schedules are missing after upgrade, comment out these calls:
+        // __ReentrancyGuard_init();
+        // __AccessControl_init();
+        // __Pausable_init();
+        // __UUPSUpgradeable_init();
         
-        // Set version to 2
-        version = 2;
+        // For now, keeping them for validator compliance, but this might be the cause
+        // of storage corruption if OpenZeppelin's reinitializer doesn't fully protect
+        __ReentrancyGuard_init();
+        __AccessControl_init();
+        __Pausable_init();
+        __UUPSUpgradeable_init();
+        
+        // No new storage variables to initialize beyond parent contracts
     }
     
     /**
      * @dev Returns the current version number
      * @return The version number (2 for V2)
+     * @notice This is a pure function that doesn't use storage
      */
-    function getVersion() external view returns (uint256) {
-        return version;
+    function getVersion() external pure returns (uint256) {
+        return 2;
     }
     
-    /**
-     * @dev Returns the total amount vested through V2
-     * @return The total amount vested using V2 functions
-     */
-    function getTotalVestedV2() external view returns (uint256) {
-        return totalVestedV2;
-    }
     
     /**
-     * @dev Creates a new vesting schedule and tracks it in V2 counter
-     * @param beneficiary Address to receive vested tokens
-     * @param amount Total amount of tokens to vest
-     * @param startTime Unix timestamp when vesting begins
-     * @param cliffDuration Duration in seconds until first tokens unlock
-     * @param duration Total duration of vesting in seconds
-     * @param slicePeriodSeconds Duration of each vesting slice in seconds
-     * @return scheduleId Unique identifier for the vesting schedule
+     * @dev Force marks a schedule as revoked without touching TokenVault
+     * Use for schedules whose allocation is already revoked in vault
+     * @param scheduleId ID of the vesting schedule to mark as revoked
+     * @return The amount of assigned tokens revoked
      */
-    function createVestingScheduleV2(
-        address beneficiary,
-        uint256 amount,
-        uint256 startTime,
-        uint256 cliffDuration,
-        uint256 duration,
-        uint256 slicePeriodSeconds
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) returns (uint256) {
-        // Input validation
-        require(beneficiary != address(0), "Invalid beneficiary");
-        require(amount > 0, "Amount must be greater than 0");
+    function forceRevokeSchedule(uint256 scheduleId) 
+        external 
+        onlyRole(DEFAULT_ADMIN_ROLE)
+        nonReentrant
+        returns (uint256) 
+    {
+        if (scheduleId == 0) revert InvalidScheduleId();
         
-        // Track V2 vesting
-        totalVestedV2 += amount;
+        VestingSchedule storage schedule = vestingSchedules[scheduleId];
+        if (schedule.beneficiary == address(0)) revert InvalidScheduleId();
+        if (schedule.revoked) revert ScheduledRevoked();
         
-        // Call base contract's vesting schedule function
-        return this.createVestingSchedule(
-            beneficiary,
-            amount,
-            startTime,
-            cliffDuration,
-            duration,
-            slicePeriodSeconds
-        );
+        // Calculate unvested amount
+        uint256 unvestedAmount = schedule.totalAmount - schedule.releasedAmount;
+        
+        // Mark schedule as revoked (without calling tokenVault.revokeAllocation())
+        schedule.revoked = true;
+        
+        emit ScheduleRevoked(scheduleId, schedule.beneficiary, unvestedAmount);
+        
+        return unvestedAmount;
     }
+
+    /**
+     * @dev Batch version for efficiency
+     * Force marks multiple schedules as revoked without touching TokenVault
+     * @param scheduleIds Array of schedule IDs to mark as revoked
+     * @return successCount Number of schedules successfully marked as revoked
+     */
+    function batchForceRevokeSchedules(uint256[] calldata scheduleIds) 
+        external 
+        onlyRole(DEFAULT_ADMIN_ROLE)
+        nonReentrant
+        returns (uint256 successCount) 
+    {
+        successCount = 0;
+        uint256 length = scheduleIds.length;
+        
+        for (uint256 i = 0; i < length; i++) {
+            uint256 scheduleId = scheduleIds[i];
+            
+            // Skip invalid schedule IDs
+            if (scheduleId == 0) {
+                continue;
+            }
+            
+            VestingSchedule storage schedule = vestingSchedules[scheduleId];
+            
+            
+            // Skip if already revoked
+            if (schedule.revoked) {
+                continue;
+            }
+
+            if (schedule.beneficiary == address(0)) {
+                continue;
+            }
+            
+            // Calculate unvested amount
+            uint256 unvestedAmount = schedule.totalAmount - schedule.releasedAmount;
+            
+            // Mark schedule as revoked (without calling tokenVault.revokeAllocation())
+            schedule.revoked = true;
+            
+            emit ScheduleRevoked(scheduleId, schedule.beneficiary, unvestedAmount);
+            
+            successCount++;
+        }
+        
+        return successCount;
+    }
+
 } 

@@ -69,7 +69,7 @@ describe("VestingManager Upgrades", function () {
       await upgraded.initializeV2();
       
       // Verify new functionality
-      expect(await upgraded.version()).to.equal(2);
+      expect(await upgraded.getVersion()).to.equal(2);
     });
 
     it("Should not allow non-upgrader to upgrade the contract", async function () {
